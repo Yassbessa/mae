@@ -7,7 +7,7 @@ from datetime import date, datetime
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
 
-# SEU URL DO APPS SCRIPT (Versão 2)
+# URL DO SEU APPS SCRIPT (Versão 2)
 URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyByTKemIrdGk7y6HnHAGC-d8Vgxu_WoeVAdsBh8mLcR44-XQbSKY3E827lFT49i1YhBA/exec"
 
 # --- MEMÓRIA DO APP ---
@@ -18,7 +18,11 @@ if 'user' not in st.session_state:
 
 # Funções de Conexão
 def salvar_dados(lista, aba):
-    requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista)
+    try:
+        requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista)
+        return True
+    except:
+        return False
 
 def ler_dados(aba):
     try:
@@ -31,7 +35,7 @@ def ler_dados(aba):
     return pd.DataFrame()
 
 # ==========================================
-# ETAPA 1: BOAS-VINDAS
+# TELA 1: BOAS-VINDAS
 # ==========================================
 if st.session_state.etapa == "boas_vindas":
     st.markdown("<h1 style='text-align: center; color: #E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
@@ -43,7 +47,7 @@ if st.session_state.etapa == "boas_vindas":
         st.session_state.etapa = "cadastro"; st.rerun()
 
 # ==========================================
-# ETAPA 2: LOGIN (CONECTADO!)
+# TELA 2: LOGIN
 # ==========================================
 elif st.session_state.etapa == "login":
     st.title("👤 Identificação")
@@ -63,59 +67,43 @@ elif st.session_state.etapa == "login":
                 st.session_state.etapa = "cardapio"; st.rerun()
             else: st.error("❌ E-mail ou Senha incorretos.")
         else:
-            # Esta é a mensagem que você viu; ela indica que a conexão funciona!
-            st.warning("⚠️ Planilha vazia. Cadastre seu primeiro usuário!")
+            st.warning("⚠️ Planilha vazia. Cadastre seu primeiro usuário!") #
             
-    if col_l2.button("⬅️ VOLTAR"):
+    if col_l2.button("⬅️ VOLTAR", use_container_width=True):
         st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# ETAPA 3: CADASTRO (RESOLVENDO O ERRO DE CAMPOS VAZIOS)
+# TELA 3: CADASTRO (RESOLVENDO O ERRO DE CAMPOS VAZIOS)
 # ==========================================
 elif st.session_state.etapa == "cadastro":
     st.title("📝 Cadastro de Cliente")
     
-    # O formulário 'st.form' obriga o app a ler tudo antes de clicar no botão
-    with st.form("registro_final"):
+    with st.form("cadastro_form"):
         n_nome = st.text_input("Nome Completo:")
-        n_email = st.text_input("Seu melhor E-mail (será seu Login):") # CAMPO OBRIGATÓRIO
+        n_email = st.text_input("Seu melhor E-mail (será seu Login):") # Campo essencial
         n_pass = st.text_input("Crie uma Senha:", type="password")
         n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
         n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
         n_bairro = st.text_input("Bairro:")
         n_cep = st.text_input("CEP (Apenas números):")
-        n_inst = st.text_area("Instruções (Ex: Apto 902):")
+        n_inst = st.text_area("Instruções de Entrega:")
         
-        btn_confirmar = st.form_submit_button("FINALIZAR CADASTRO ✨")
+        btn_finalizar = st.form_submit_button("FINALIZAR CADASTRO ✨")
 
-    if btn_confirmar:
-        # O sistema só salva se estes 4 principais estiverem preenchidos
+    if btn_finalizar:
+        # Verifica se os campos principais estão preenchidos
         if n_nome and n_email and n_pass and n_end:
-            try:
-                # Organiza os dados para as colunas: NOME, EMAIL, SENHA, NASCIMENTO, ENDEREÇO, BAIRRO, CEP, INSTRUÇÕES
-                # IMPORTANTE: A ordem abaixo deve ser igual à da sua planilha!
-                dados_lista = [
-                    n_nome, 
-                    n_email.strip().lower(), 
-                    str(n_pass), 
-                    n_nasc.strftime("%d/%m"), 
-                    n_end.upper(), 
-                    n_bairro.upper(), 
-                    n_cep, 
-                    n_inst
-                ]
-                
-                # Envia para a planilha
-                salvar_dados(dados_lista, "Usuarios")
-                
-                st.success("✅ Cadastro salvo na planilha! Agora você pode entrar.")
-                st.session_state.etapa = "login"
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao salvar: {e}")
+            # Organiza os dados para as colunas: NOME, EMAIL, SENHA, NASCIMENTO, ENDEREÇO, BAIRRO, CEP, INSTRUÇÕES
+            # A ordem deve ser igual à sua planilha
+            dados = [n_nome, n_email.strip().lower(), str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
+            
+            if salvar_dados(dados, "Usuarios"):
+                st.success("✅ Cadastro salvo! Agora faça o login.")
+                st.session_state.etapa = "login"; st.rerun()
+            else:
+                st.error("Erro ao enviar dados para a planilha.")
         else:
-            # Esse é o erro que você está vendo agora
-            st.error("⚠️ Por favor, preencha o Nome, E-mail, Senha e Endereço!")
+            st.error("⚠️ Preencha Nome, E-mail, Senha e Endereço!")
 # ==========================================
 # ETAPA 4: CARDÁPIO (O DESTINO FINAL!)
 # ==========================================
