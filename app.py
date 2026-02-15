@@ -1,123 +1,90 @@
 import streamlit as st
 import urllib.parse
+import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Jaque é Doce!", page_icon="🐝", layout="centered")
 
-# --- SEUS DADOS (EDITE AQUI!) ---
-WHATSAPP_NUMBER = "5521976141210" 
-NOME_LOJA = "Jaque é Doce! 🐝"
-INSTAGRAM = "@jaqueedoce.rj"
-CHAVE_PIX = "30.615.725 000155"  # <--- COLOQUE SUA CHAVE PIX AQUI (Celular, CPF ou Email)
-NOME_TITULAR_PIX = "Jaqueline Miranda" # <--- Nome que aparece no comprovante
+# --- NAVEGAÇÃO ---
+if 'pagina' not in st.session_state:
+    st.session_state.pagina = 'inicio'
+if 'eh_morador' not in st.session_state:
+    st.session_state.eh_morador = False
 
-# --- ESTOQUE E PREÇOS ---
-cardapio = {
-    "❄️ Sacolés Tropicais (Sem Lactose)": [
-        {"item": "Goiaba", "preco": 5.00, "estoque": 4},
-        {"item": "Uva", "preco": 5.00, "estoque": 0},
-        {"item": "Maracujá", "preco": 5.00, "estoque": 0},
-        {"item": "Manga", "preco": 5.00, "estoque": 4},
-        {"item": "Morango", "preco": 5.00, "estoque": 0},
-        {"item": "Abacaxi com Hortelã", "preco": 5.00, "estoque": 1},
-        {"item": "Frutopia", "preco": 5.00, "estoque": 3},
-    ],
-    "🍫 Sacolés Gourmet": [
-        {"item": "Ninho com Nutella", "preco": 7.00, "estoque": 5},
-        {"item": "Ninho com Morango", "preco": 7.00, "estoque": 4},
-        {"item": "Chicabon", "preco": 7.00, "estoque": 4},
-        {"item": "Mousse de Maracujá", "preco": 7.00, "estoque": 3},
-        {"item": "Pudim de Leite", "preco": 7.00, "estoque": 5},
-        {"item": "Açaí Cremoso", "preco": 7.00, "estoque": 4},
-        {"item": "Coco Cremoso", "preco": 7.00, "estoque": 6},
-    ],
-    "🔞 Sacolés Alcoólicos (+18)": [
-        {"item": "Piña Colada", "preco": 10.00, "estoque": 1},
-        {"item": "Sex on the Beach", "preco": 10.00, "estoque": 0},
-        {"item": "Caipirinha de Limão", "preco": 10.00, "estoque": 2},
-        {"item": "Batida de Maracujá", "preco": 10.00, "estoque": 2},
-        {"item": "Batida de Morango", "preco": 10.00, "estoque": 1},
-    ],
-    "🥧 Empadão (Pronto e Congelado)": [
-        {"item": "Empadão Frango (Pequeno 220ml)", "preco": 12.00, "estoque": 4},
-        {"item": "Empadão Frango (Grande 500ml)", "preco": 18.00, "estoque": 0},
-    ],
-    "🍰 Bolos": [
-        {"item": "Crunch Cake (Pote 180g)", "preco": 10.00, "estoque": 4},
-    ]
-}
+# --- CONTATOS ---
+NUMERO_YASMIN = "5521981816105" 
+NUMERO_JAQUE = "5521976141210" 
+CHAVE_PIX = "30.615.725 000155" 
 
-# --- VISUAL DO APP ---
-st.title(NOME_LOJA)
-st.markdown(f"**Faça seu pedido online!** Siga a gente: [{INSTAGRAM}](https://instagram.com/{INSTAGRAM[1:]})")
-st.write("---")
-
-pedido_atual = {}
-total_compra = 0.0
-
-# --- GERAR LISTA DE PRODUTOS ---
-for categoria, itens in cardapio.items():
-    st.subheader(categoria)
-    for produto in itens:
-        col1, col2, col3 = st.columns([3, 1.5, 1.5])
-        
-        with col1:
-            st.write(f"**{produto['item']}**")
-            st.caption(f"R$ {produto['preco']:.2f}")
-        
-        with col2:
-            if produto['estoque'] > 0:
-                st.info(f"Restam: {produto['estoque']}")
-            else:
-                st.error("Esgotado")
-        
-        with col3:
-            if produto['estoque'] > 0:
-                chave_unica = f"{categoria}_{produto['item']}"
-                qtd = st.number_input("Qtd", 0, produto['estoque'], key=chave_unica, label_visibility="collapsed")
-                if qtd > 0:
-                    pedido_atual[produto['item']] = {"qtd": qtd, "preco": produto['preco']}
-                    total_compra += (qtd * produto['preco'])
-
-# --- FINALIZAÇÃO DO PEDIDO ---
-st.write("---")
-
-if total_compra > 0:
-    st.success(f"💰 **Total do Pedido: R$ {total_compra:.2f}**")
+# --- TELA 1: INTERFACE DE BOAS-VINDAS ---
+if st.session_state.pagina == 'inicio':
+    st.markdown("<h1 style='text-align: center;'>Jaque é Doce! 🐝</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    st.markdown("### 📝 Dados para Entrega")
-    col_nome, col_apto = st.columns(2)
-    with col_nome:
-        nome_cliente = st.text_input("Seu Nome:")
-    with col_apto:
-        apto_cliente = st.text_input("Apartamento / Bloco:")
+    # IMAGEM DA LOGO OU CAPA
+    st.image("https://images.unsplash.com/photo-1553177595-4de2bb0842b9?q=80&w=500", caption="Doces feitos com amor ❤️", use_container_width=True)
     
-    # Exibe o PIX apenas se preencher os dados
-    if nome_cliente and apto_cliente:
-        st.markdown("---")
-        st.markdown("### 💸 Pagamento via PIX")
-        st.code(CHAVE_PIX, language="text")
-        st.caption(f"Titular: {NOME_TITULAR_PIX}")
-        st.info("Copie a chave acima para pagar no seu banco.")
+    st.markdown("### Bem-vindo(a) ao nosso cardápio digital!")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🏠 SOU MORADOR", use_container_width=True):
+            st.session_state.pagina = 'cupom_morador'
+            st.rerun()
+    with col2:
+        if st.button("🍦 VISITANTE / GERAL", use_container_width=True):
+            st.session_state.eh_morador = False
+            st.session_state.pagina = 'cardapio'
+            st.rerun()
 
-        # Monta a mensagem
-        msg = f"*NOVO PEDIDO - JAQUE É DOCE* 🐝\n\n"
-        msg += f"👤 *Cliente:* {nome_cliente}\n"
-        msg += f"🏢 *Apto/Bloco:* {apto_cliente}\n\n"
-        msg += "*🛒 Itens:*\n"
-        for item, dados in pedido_atual.items():
-            msg += f"▪️ {dados['qtd']}x {item}\n"
-        msg += f"\n💰 *Total: R$ {total_compra:.2f}*\n"
-        msg += f"💳 *Pagamento:* Via PIX\n"
-        msg += "\n(Envie o comprovante se já tiver pago!)"
-        
-        # Cria o link
-        texto_zap = urllib.parse.quote(msg)
-        link_zap = f"https://wa.me/{WHATSAPP_NUMBER}?text={texto_zap}"
-        
-        st.link_button("🚀 Enviar Pedido e Comprovante", link_zap, type="primary")
-    else:
-        st.warning("Preencha Nome e Apartamento para ver a chave PIX e finalizar.")
+# --- TELA 2: VALIDAÇÃO ---
+elif st.session_state.pagina == 'cupom_morador':
+    st.subheader("🏠 Validação de Morador")
+    cupom_validar = st.text_input("Insira o cupom do condomínio:").strip().upper()
+    if st.button("Validar"):
+        if cupom_validar in ["MACHADORIBEIRO", "GARAGEMLOLA"]:
+            st.session_state.eh_morador = True
+            st.session_state.pagina = 'cardapio'
+            st.rerun()
+        else:
+            st.error("Cupom inválido!")
 
-else:
-    st.info("Selecione os itens acima para começar.")
+# --- TELA 3: CARDÁPIO ---
+elif st.session_state.pagina == 'cardapio':
+    p_fruta = 5.00 if st.session_state.eh_morador else 8.00
+    p_gourmet = 7.00 if st.session_state.eh_morador else 9.00
+
+    st.title("Cardápio Jaque é Doce! 🐝")
+    
+    # --- CATEGORIA: SACOLÉS FRUTA ---
+    st.header("❄️ Sacolés de Fruta")
+    st.image("https://images.unsplash.com/photo-1505394033343-431693360211?q=80&w=500", caption="Refrescantes e naturais")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        qtd_goiaba = st.number_input(f"Goiaba - R$ {p_fruta:.2f}", 0, 10, key="goiaba")
+    with col2:
+        qtd_manga = st.number_input(f"Manga - R$ {p_fruta:.2f}", 0, 10, key="manga")
+
+    # --- CATEGORIA: GOURMET ---
+    st.header("🍫 Sacolés Gourmet")
+    st.image("https://images.unsplash.com/photo-1481391243133-f96216d51df7?q=80&w=500", caption="Cremosidade incomparável")
+    
+    col3, col4 = st.columns(2)
+    with col3:
+        qtd_ninho = st.number_input(f"Ninho c/ Nutella - R$ {p_gourmet:.2f}", 0, 10, key="ninho")
+    with col4:
+        qtd_chica = st.number_input(f"Chicabon - R$ {p_gourmet:.2f}", 0, 10, key="chica")
+
+    # --- CÁLCULO E FINALIZAÇÃO ---
+    total = (qtd_goiaba + qtd_manga) * p_fruta + (qtd_ninho + qtd_chica) * p_gourmet
+    
+    if total > 0:
+        st.divider()
+        nome = st.text_input("Seu Nome:")
+        apto = st.text_input("Seu Apartamento:")
+        
+        if st.button("🚀 ENVIAR PEDIDO"):
+            destinatario = NUMERO_YASMIN if st.session_state.eh_morador else NUMERO_JAQUE
+            msg = f"🍦 *PEDIDO*\n📍 Apto: {apto}\n👤 Nome: {nome}\n💰 Total: R$ {total:.2f}"
+            st.write(f"Link gerado para: {'Yasmin' if st.session_state.eh_morador else 'Jaque'}")
+            st.markdown(f"[Clique aqui para confirmar no WhatsApp](https://wa.me/{destinatario}?text={urllib.parse.quote(msg)})")
