@@ -1,24 +1,35 @@
 import streamlit as st
-import urllib.parse
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import requests
+import urllib.parse
 from datetime import date, datetime
 
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
-# Conexão que busca o link direto nas Secrets
-conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- REGRAS DE SEGURANÇA (ENDEREÇO) ---
-ENDERECO_RESTRITO = ["24 DE MAIO", "VINTE E QUATRO DE MAIO"]
-NUMERO_RESTRITO = "85"
-CEPS_RESTRITOS = ["20950-085", "20950-090", "20950085", "20950090"]
+# SEU NOVO URL DA VERSÃO 2
+URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyByTKemIrdGk7y6HnHAGC-d8Vgxu_WoeVAdsBh8mLcR44-XQbSKY3E827lFT49i1YhBA/exec"
 
 # --- MEMÓRIA DO APP ---
 if 'etapa' not in st.session_state:
     st.session_state.etapa = "boas_vindas"
 if 'user' not in st.session_state:
     st.session_state.user = None
+
+# Funções auxiliares para falar com a planilha
+def salvar_dados(lista, aba):
+    try:
+        requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista)
+    except:
+        st.error("Erro ao salvar dados. Verifique a internet.")
+
+def ler_dados(aba):
+    try:
+        response = requests.get(f"{URL_WEB_APP}?aba={aba}")
+        data = response.json()
+        return pd.DataFrame(data[1:], columns=data[0])
+    except:
+        return pd.DataFrame()
 
 # ==========================================
 # TELA 1: BOAS-VINDAS
@@ -41,62 +52,42 @@ elif st.session_state.etapa == "login":
     p_log = st.text_input("Senha:", type="password")
     
     if st.button("ACESSAR 🚀"):
-        try:
-            # Lendo a aba de usuários cadastrados
-            df_u = conn.read(worksheet="Usuarios")
-            match = df_u[(df_u['NOME'] == u_log) & (df_u['SENHA'] == str(p_log))]
-            
+        df_u = ler_dados("Usuarios")
+        if not df_u.empty:
+            # Busca o usuário na lista retornada pela planilha
+            match = df_u[(df_u['NOME'] == u_log) & (df_u['SENHA'].astype(str) == str(p_log))]
             if not match.empty:
                 st.session_state.user = match.iloc[0].to_dict()
                 st.session_state.etapa = "cardapio"; st.rerun()
             else:
                 st.error("Nome ou Senha incorretos.")
-        except Exception as e:
-            st.error(f"Erro ao conectar: {e}. Verifique as Secrets.")
+        else:
+            st.warning("Nenhum usuário cadastrado ou erro na planilha.")
 
     if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# TELA 3: CADASTRO DE CLIENTE (COM FORMULÁRIO)
+# TELA 3: CADASTRO (RESOLVE ERRO DE CAMPOS VAZIOS)
 # ==========================================
 elif st.session_state.etapa == "cadastro":
     st.title("📝 Cadastro de Cliente")
-    
-    # Criamos um formulário para garantir que todos os campos sejam lidos juntos
-    with st.form("form_cadastro"):
+    with st.form("meu_cadastro"):
         n_nome = st.text_input("Nome Completo:")
         n_pass = st.text_input("Crie uma Senha:", type="password")
-        # Data desde 1930 conforme solicitado
         n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
-        n_end = st.text_input("Endereço:")
+        n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
         n_bairro = st.text_input("Bairro:")
-        n_cep = st.text_input("CEP (Apenas números):")
-        n_inst = st.text_area("Instruções de Entrega (Ex: Apto 201):")
-        
-        # O botão agora faz parte do formulário
-        botao_cadastrar = st.form_submit_button("FINALIZAR CADASTRO 🐝")
+        n_cep = st.text_input("CEP:")
+        n_inst = st.text_area("Instruções de Entrega (Ex: Apto 902):")
+        submit = st.form_submit_button("FINALIZAR CADASTRO ✨")
 
-    if botao_cadastrar:
-        # Verifica se TODOS os campos estão preenchidos de verdade
-        if n_nome and n_pass and n_end and n_bairro and n_cep:
-            try:
-                # 1. Tenta ler os usuários existentes
-                df_old = conn.read(worksheet="Usuarios")
-                # 2. Prepara o novo usuário
-                df_new = pd.DataFrame([{
-                    "NOME": n_nome, "SENHA": str(n_pass), "NASCIMENTO": n_nasc.strftime("%d/%m"),
-                    "ENDEREÇO": n_end.upper(), "BAIRRO": n_bairro.upper(), "CEP": n_cep, "INSTRUÇÕES": n_inst
-                }])
-                # 3. Junta e atualiza a planilha
-                df_total = pd.concat([df_old, df_new], ignore_index=True)
-                conn.update(worksheet="Usuarios", data=df_total)
-                
-                st.success("Cadastro realizado com sucesso! Agora você pode fazer o Login.")
-                st.session_state.etapa = "login"
-                st.rerun()
-            except Exception as e:
-                # Esse erro acontece se o link da planilha nas Secrets estiver errado
-                st.error(f"Erro de Conexão: Verifique se o link da planilha está correto nas Secrets do Streamlit.")
+    if submit:
+        if n_nome and n_pass and n_end and n_cep and n_bairro:
+            # Envia os dados como uma lista para a aba 'Usuarios'
+            dados = [n_nome, str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
+            salvar_dados(dados, "Usuarios")
+            st.success("Cadastro realizado! Agora faça seu Login.")
+            st.session_state.etapa = "login"
         else:
             st.error("Preencha todos os campos obrigatórios!")
 
@@ -107,33 +98,35 @@ elif st.session_state.etapa == "cardapio":
     u = st.session_state.user
     st.title(f"Olá, {u['NOME']}! 🍦")
     
-    # 🎂 Balões no dia do aniversário
+    # 🎂 Aniversário
     if u['NASCIMENTO'] == date.today().strftime("%d/%m"):
         st.balloons(); st.success("🎉 Parabéns! Hoje você tem brinde especial!")
-
-    # --- SUGESTÕES BASEADAS NO HISTÓRICO ---
-    try:
-        df_hist = conn.read(worksheet="Vendas_Geral")
-        # Filtra compras passadas desse usuário
-        meus_fav = df_hist[df_hist['NOME'] == u['NOME']]['ITEM'].value_counts().head(2).index.tolist()
-        if meus_fav:
-            st.info(f"⭐ **Sugestão para você:** Notamos que você adora {', '.join(meus_fav)}!")
-    except: pass
 
     # --- TRAVA DO DESCONTO MORADOR ---
     cupom = st.text_input("Cupom:").strip().upper()
     eh_morador = False
     if cupom == "MACHADORIBEIRO":
         end_u = str(u['ENDEREÇO']).upper()
-        # Aceita "24 de Maio" ou "Vinte e Quatro de Maio"
-        valido = any(rua in end_u for rua in ENDERECO_RESTRITO) and NUMERO_RESTRITO in end_u
-        if valido and u['CEP'].replace("-","") in [c.replace("-","") for c in CEPS_RESTRITOS]:
+        if ("24 DE MAIO" in end_u or "VINTE E QUATRO DE MAIO" in end_u) and "85" in end_u:
             st.success("Desconto morador ativado! ✅")
             eh_morador = True
-        else: st.error("Cupom exclusivo para moradores da Rua 24 de Maio, 85.")
+        else:
+            st.error("Cupom exclusivo para moradores da Rua 24 de Maio, 85.")
 
-    # (Lógica de pedidos e total aqui...)
-    total = 0.0 # Exemplo simplificado
-    if st.button("🚀 FINALIZAR PEDIDO NO WHATSAPP"):
-        # Salva na Vendas_Geral incluindo BAIRRO
-        st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/5521976141210?text=Oi\' /">', unsafe_allow_html=True)
+    # Exemplo de seletor de pedido
+    p_gourmet = 7.0 if eh_morador else 9.0
+    st.header("❄️ Sacolés Gourmet")
+    qtd_ninho = st.number_input(f"Ninho c/ Nutella (R$ {p_gourmet:.2f})", 0, 10)
+    
+    total = qtd_ninho * p_gourmet
+
+    if total > 0:
+        st.markdown(f"### Total: R$ {total:.2f}")
+        if st.button("🚀 ENVIAR PEDIDO NO WHATSAPP"):
+            dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
+            # Salva na aba 'Vendas_Geral'
+            venda = [dt_hoje, u['NOME'], u['ENDEREÇO'], u['NASCIMENTO'], "Ninho c/ Nutella", qtd_ninho, p_gourmet, total, "A combinar", u['INSTRUÇÕES']]
+            salvar_dados(venda, "Vendas_Geral")
+            
+            msg = f"🍦 *PEDIDO DE {u['NOME']}*\n📦 {qtd_ninho}x Ninho c/ Nutella\n💰 Total: R$ {total:.2f}"
+            st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/5521976141210?text={urllib.parse.quote(msg)}\' /">', unsafe_allow_html=True)
