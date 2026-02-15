@@ -102,4 +102,18 @@ elif st.session_state.etapa == "cardapio":
     eh_morador = False
     if cupom == "MACHADORIBEIRO":
         end_u = str(u['ENDEREÇO']).upper()
-        if ("2
+        if ("24 DE MAIO" in end_u or "VINTE E QUATRO DE MAIO" in end_u) and "85" in end_u:
+            st.success("Desconto morador ativado! ✅"); eh_morador = True
+        else: st.error("Cupom restrito a moradores da Rua 24 de Maio, 85.")
+
+    # (Exemplo de compra rápida)
+    p_gourmet = 7.0 if eh_morador else 9.0
+    qtd = st.number_input(f"Ninho c/ Nutella (R$ {p_gourmet:.2f})", 0, 10)
+    
+    if qtd > 0:
+        if st.button("🚀 FINALIZAR"):
+            dt = datetime.now().strftime("%d/%m/%Y %H:%M")
+            # Salva na Vendas_Geral
+            venda = [dt, u['NOME'], u['ENDEREÇO'], u['NASCIMENTO'], "Ninho c/ Nutella", qtd, p_gourmet, qtd*p_gourmet, "PIX", u['INSTRUÇÕES']]
+            salvar_dados(venda, "Vendas_Geral")
+            st.success("Pedido gravado! Enviando para o WhatsApp...")
