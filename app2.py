@@ -57,34 +57,48 @@ elif st.session_state.etapa == "login":
     if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# TELA 3: CADASTRO (COM BAIRRO E DATA 1930)
+# TELA 3: CADASTRO DE CLIENTE (COM FORMULÁRIO)
 # ==========================================
 elif st.session_state.etapa == "cadastro":
     st.title("📝 Cadastro de Cliente")
-    n_nome = st.text_input("Nome Completo:")
-    n_pass = st.text_input("Crie uma Senha:", type="password")
-    # Data de nascimento desde 1930 para os clientes mais velhos
-    n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
-    n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
-    n_bairro = st.text_input("Bairro:") 
-    n_cep = st.text_input("CEP:")
-    n_inst = st.text_area("Instruções de Entrega (Ex: Apto 902):")
+    
+    # Criamos um formulário para garantir que todos os campos sejam lidos juntos
+    with st.form("form_cadastro"):
+        n_nome = st.text_input("Nome Completo:")
+        n_pass = st.text_input("Crie uma Senha:", type="password")
+        # Data desde 1930 conforme solicitado
+        n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
+        n_end = st.text_input("Endereço:")
+        n_bairro = st.text_input("Bairro:")
+        n_cep = st.text_input("CEP (Apenas números):")
+        n_inst = st.text_area("Instruções de Entrega (Ex: Apto 201):")
+        
+        # O botão agora faz parte do formulário
+        botao_cadastrar = st.form_submit_button("FINALIZAR CADASTRO 🐝")
 
-    if st.button("FINALIZAR CADASTRO ✨"):
-        if n_nome and n_pass and n_cep and n_bairro:
+    if botao_cadastrar:
+        # Verifica se TODOS os campos estão preenchidos de verdade
+        if n_nome and n_pass and n_end and n_bairro and n_cep:
             try:
-                # RESOLVENDO O ERRO DE GRAVAÇÃO (UnsupportedOperation)
+                # 1. Tenta ler os usuários existentes
                 df_old = conn.read(worksheet="Usuarios")
+                # 2. Prepara o novo usuário
                 df_new = pd.DataFrame([{
                     "NOME": n_nome, "SENHA": str(n_pass), "NASCIMENTO": n_nasc.strftime("%d/%m"),
                     "ENDEREÇO": n_end.upper(), "BAIRRO": n_bairro.upper(), "CEP": n_cep, "INSTRUÇÕES": n_inst
                 }])
+                # 3. Junta e atualiza a planilha
                 df_total = pd.concat([df_old, df_new], ignore_index=True)
                 conn.update(worksheet="Usuarios", data=df_total)
-                st.success("Cadastro realizado! Faça o Login.")
-                st.session_state.etapa = "login"; st.rerun()
-            except: st.error("Erro ao salvar. Verifique se a aba 'Usuarios' existe na planilha.")
-        else: st.error("Preencha todos os campos!")
+                
+                st.success("Cadastro realizado com sucesso! Agora você pode fazer o Login.")
+                st.session_state.etapa = "login"
+                st.rerun()
+            except Exception as e:
+                # Esse erro acontece se o link da planilha nas Secrets estiver errado
+                st.error(f"Erro de Conexão: Verifique se o link da planilha está correto nas Secrets do Streamlit.")
+        else:
+            st.error("Preencha todos os campos obrigatórios!")
 
 # ==========================================
 # TELA 4: CARDÁPIO INTELIGENTE
