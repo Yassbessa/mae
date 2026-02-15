@@ -2,104 +2,126 @@ import streamlit as st
 import urllib.parse
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Ja Que é Doce!", page_icon="🐝", layout="centered")
+st.set_page_config(page_title="Jaque é Doce!", page_icon="🐝", layout="centered")
 
 # --- CONTROLE DE NAVEGAÇÃO ---
-if 'foi_para_cardapio' not in st.session_state:
-    st.session_state.foi_para_cardapio = False
+if 'abriu_cardapio' not in st.session_state:
+    st.session_state.abriu_cardapio = False
 
-# --- CONTATOS ---
+# --- DADOS ---
 NUMERO_YASMIN = "5521981816105" 
 NUMERO_JAQUE = "5521976141210" 
 CHAVE_PIX = "30.615.725 000155" 
 
-# --- TELA 1: INTERFACE CONVIDATIVA (BOAS-VINDAS) ---
-if not st.session_state.foi_para_cardapio:
+# --- TELA 1: INTERFACE CONVIDATIVA ---
+if not st.session_state.abriu_cardapio:
     st.markdown("<h1 style='text-align: center; color: #E67E22;'>Jaque é Doce! 🐝</h1>", unsafe_allow_html=True)
     st.write("---")
     
-    # Aqui você pode colocar uma foto bem bonita da produção quando tiver
-    st.markdown("<h3 style='text-align: center;'>Feitos com amor, para adoçar o seu dia. ❤️</h3>", unsafe_allow_html=True)
+    # Foto de capa baseada na sua logo e sacolés
+    st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/image_0073e0.jpg", caption="Delícias artesanais feitas com carinho ❤️", use_container_width=True)
     
-    st.write("")
-    st.write("Olá, vizinho(a)! É um prazer ter você por aqui. Preparamos tudo de forma artesanal, com ingredientes selecionados e muito carinho.")
-    st.write("Nossos sacolés, empadões e bolos estão te esperando.")
-    st.write("")
+    st.markdown("<h3 style='text-align: center;'>Bem-vindo(a), vizinho(a)!</h3>", unsafe_allow_html=True)
+    st.write("É um prazer ter você aqui. Preparamos nossos sacolés, empadões e bolos com os melhores ingredientes para adoçar o seu dia.")
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("✨ VER CARDÁPIO COMPLETO", use_container_width=True):
-            st.session_state.foi_para_cardapio = True
+        if st.button("✨ VER CARDÁPIO E ESTOQUE", use_container_width=True):
+            st.session_state.abriu_cardapio = True
             st.rerun()
-            
-    st.markdown("<p style='text-align: center; font-size: 0.8em; color: gray;'>Atendimento das 10h às 20h</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.8em; color: gray;'>Retiradas no apto 902 ou Entregas rápidas</p>", unsafe_allow_html=True)
 
-# --- TELA 2: CARDÁPIO DIRETÃO ---
+# --- TELA 2: CARDÁPIO COMPLETO ---
 else:
-    if st.button("⬅️ Voltar"):
-        st.session_state.foi_para_cardapio = False
+    if st.button("⬅️ Voltar para o Início"):
+        st.session_state.abriu_cardapio = False
         st.rerun()
 
-    st.title("Cardápio do Dia 🍦")
+    st.title("Nosso Cardápio 🍦")
     
-    # Espaço para o cupom de morador (MACHADORIBEIRO)
-    cupom = st.text_input("Possui um cupom de desconto?").strip().upper()
+    # Campo de Cupons (Aniversário e Morador)
+    cupons_input = st.text_input("Possui cupons? (Ex: MACHADORIBEIRO, ANIVERSARIO)").strip().upper()
+    lista_cupons = [c.strip() for c in cupons_input.split(",")]
     
-    eh_morador = (cupom == "MACHADORIBEIRO" or cupom == "GARAGEMLOLA")
+    eh_morador = ("MACHADORIBEIRO" in lista_cupons or "GARAGEMLOLA" in lista_cupons)
+    cupom_niver = "ANIVERSARIO" in lista_cupons
     
-    # Definição de Preços
+    # Preços diferenciados conforme o cupom
     p_fruta = 5.00 if eh_morador else 8.00
     p_gourmet = 7.00 if eh_morador else 9.00
-    p_frutopia = 7.00 if eh_morador else 9.00
     p_alcoolico = 9.00 if eh_morador else 10.00
 
     if eh_morador:
         st.success("🏠 Vizinho identificado! Preços especiais aplicados.")
+    if cupom_niver:
+        st.balloons()
+        st.info("🎂 Feliz Aniversário! Você ganhou um sacolé de brinde (desconto aplicado no final).")
 
     pedido = []
-    total = 0.0
+    total_bruto = 0.0
+    valor_brinde = 0.0
 
-    # --- CATEGORIAS ---
-    st.header("❄️ Sacolés")
+    # --- CATEGORIA: SACOLÉS ---
+    st.header("❄️ Sacolés Gourmet & Tropicais")
+    st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/image_0073e0.jpg", caption="Sabores Tropicais, Gourmet e Alcoólicos")
     
-    # Tropicais
-    with st.expander("Sacolés de Fruta (Sem Lactose)", expanded=True):
-        for s in ["Goiaba", "Manga", "Abacaxi com Hortelã", "Frutopia"]:
-            pr = p_frutopia if s == "Frutopia" else p_fruta
-            qtd = st.number_input(f"{s} - R$ {pr:.2f}", 0, 20, key=f"f_{s}")
-            if qtd > 0:
-                total += (qtd * pr)
-                pedido.append(f"✅ {qtd}x {s}")
+    categorias_sacoles = {
+        "Tropicais (Sem Lactose)": [{"item": "Goiaba", "p": p_fruta, "est": 4}, {"item": "Manga", "p": p_fruta, "est": 4}, {"item": "Abacaxi com Hortelã", "p": p_fruta, "est": 1}],
+        "Gourmet (Cremosos)": [{"item": "Ninho com Nutella", "p": p_gourmet, "est": 5}, {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}, {"item": "Chicabon", "p": p_gourmet, "est": 4}],
+        "Alcoólicos (+18)": [{"item": "Caipirinha", "p": p_alcoolico, "est": 2}, {"item": "Piña Colada", "p": p_alcoolico, "est": 1}]
+    }
 
-    # Gourmet
-    with st.expander("Sacolés Gourmet (Cremosos)", expanded=True):
-        for s in ["Ninho c/ Nutella", "Ninho c/ Morango", "Chicabon", "Pudim de Leite", "Coco Cremoso"]:
-            qtd = st.number_input(f"{s} - R$ {p_gourmet:.2f}", 0, 20, key=f"g_{s}")
-            if qtd > 0:
-                total += (qtd * p_gourmet)
-                pedido.append(f"✅ {qtd}x {s}")
+    for cat, itens in categorias_sacoles.items():
+        with st.expander(cat, expanded=True):
+            for i in itens:
+                c1, c2, c3 = st.columns([3, 1, 1])
+                c1.write(f"**{i['item']}**\nR$ {i['p']:.2f}")
+                c2.write(f"Estoque: {i['est']}")
+                if i['est'] > 0:
+                    qtd = c3.number_input("Qtd", 0, i['est'], key=f"q_{i['item']}", label_visibility="collapsed")
+                    if qtd > 0:
+                        total_bruto += (qtd * i['p'])
+                        pedido.append(f"✅ {qtd}x {i['item']}")
+                        if cupom_niver: valor_brinde = i['p'] # Aplica o desconto do brinde
+                else:
+                    c3.write("❌")
 
-    # Salgados e Bolos
-    st.header("🥧 Salgados e Sobremesas")
-    qtd_emp = st.number_input("Empadão Frango (P) - R$ 12.00", 0, 10, key="emp_p")
-    qtd_bolo = st.number_input("Crunch Cake (Pote) - R$ 10.00", 0, 10, key="bolo")
-    
-    total += (qtd_emp * 12.00) + (qtd_bolo * 10.00)
-    if qtd_emp > 0: pedido.append(f"✅ {qtd_emp}x Empadão P")
-    if qtd_bolo > 0: pedido.append(f"✅ {qtd_bolo}x Bolo Pote")
+    # --- CATEGORIA: EMPADÃO ---
+    st.header("🥧 Empadão Cremoso")
+    st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/empadão2.jpeg", caption="Massa que desmancha na boca")
+    c1, c2, c3 = st.columns([3, 1, 1])
+    c1.write("**Empadão Frango (P - 220ml)**\nR$ 12.00")
+    c2.write("Estoque: 4")
+    qtd_emp = c3.number_input("Qtd", 0, 4, key="q_emp")
+    if qtd_emp > 0:
+        total_bruto += (qtd_emp * 12.00)
+        pedido.append(f"✅ {qtd_emp}x Empadão P")
+
+    # --- CATEGORIA: BOLO ---
+    st.header("🍰 Bolo Crunch Cake")
+    st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/bolo.jpeg", caption="Chocolate cremoso e crocante")
+    c1, c2, c3 = st.columns([3, 1, 1])
+    c1.write("**Crunch Cake (Pote 180g)**\nR$ 10.00")
+    c2.write("Estoque: 4")
+    qtd_bolo = c3.number_input("Qtd", 0, 4, key="q_bolo")
+    if qtd_bolo > 0:
+        total_bruto += (qtd_bolo * 10.00)
+        pedido.append(f"✅ {qtd_bolo}x Bolo Crunch Cake")
 
     # --- FINALIZAÇÃO ---
-    if total > 0:
+    if total_bruto > 0:
         st.divider()
-        st.subheader(f"Total: R$ {total:.2f}")
+        total_final = total_bruto - valor_brinde
+        st.subheader(f"Total: R$ {total_final:.2f}")
+        if valor_brinde > 0: st.info(f"🎁 Desconto brinde aplicado: - R$ {valor_brinde:.2f}")
+        
         nome = st.text_input("Seu Nome:")
-        apto = st.text_input("Seu Apartamento:")
+        apto = st.text_input("Seu Apto / Bloco:")
         entrega = st.radio("Como prefere?", ["Entregar agora", "Buscar no 902", "Agendar"])
         
         if nome and apto:
             destinatario = NUMERO_YASMIN if eh_morador else NUMERO_JAQUE
             lista_itens = "\n".join(pedido)
-            msg = f"🍦 *PEDIDO*\n📍 Local: {apto}\n👤 Nome: {nome}\n🕒 Hora: {entrega}\n\n*ITENS:*\n{lista_itens}\n\n💰 *Total: R$ {total:.2f}*"
+            msg = f"🍦 *NOVO PEDIDO*\n📍 Local: {apto}\n👤 Nome: {nome}\n🕒 Hora: {entrega}\n\n*ITENS:*\n{lista_itens}\n\n💰 *Total: R$ {total_final:.2f}*"
             
-            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
-            st.link_button("🚀 ENVIAR PEDIDO", link, type="primary")
+            st.link_button("🚀 ENVIAR PEDIDO NO WHATSAPP", f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}", type="primary")
