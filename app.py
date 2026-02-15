@@ -2,7 +2,7 @@ import streamlit as st
 import urllib.parse
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Ja Que é Doce!", page_icon="🐝", layout="centered")
+st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
 
 if 'abriu_cardapio' not in st.session_state:
     st.session_state.abriu_cardapio = False
@@ -14,7 +14,7 @@ CHAVE_PIX = "30.615.725 000155"
 
 # --- TELA 1: BOAS-VINDAS ---
 if not st.session_state.abriu_cardapio:
-    st.markdown("<h1 style='text-align: center; color: #E67E22;'>Jaque é Doce! 🐝</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
     st.write("---")
     st.markdown("<h3 style='text-align: center;'>Feitos artesanalmente para você. ❤️</h3>", unsafe_allow_html=True)
     
@@ -34,7 +34,6 @@ else:
     
     cupons_input = st.text_input("Possui cupons?").strip().upper()
     eh_morador = ("MACHADORIBEIRO" in cupons_input or "GARAGEMLOLA" in cupons_input)
-    cupom_niver = "ANIVERSARIO" in cupons_input
     
     p_fruta = 5.00 if eh_morador else 8.00
     p_gourmet = 7.00 if eh_morador else 9.00
@@ -43,12 +42,34 @@ else:
     pedido = []
     total_bruto = 0.0
 
-    # --- SACOLÉS (SEM FOTO) ---
+    # --- SACOLÉS (LISTA COMPLETA) ---
     st.header("❄️ Sacolés")
     estoque_sacoles = {
-        "Frutas (Sem Lactose)": [{"item": "Goiaba", "p": p_fruta, "est": 4}, {"item": "Manga", "p": p_fruta, "est": 4}, {"item": "Abacaxi c/ Hortelã", "p": p_fruta, "est": 1}],
-        "Gourmet (Cremosos)": [{"item": "Ninho c/ Nutella", "p": p_gourmet, "est": 5}, {"item": "Chicabon", "p": p_gourmet, "est": 4}, {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}],
-        "Alcoólicos (+18)": [{"item": "Piña Colada", "p": p_alcoolico, "est": 1}, {"item": "Caipirinha", "p": p_alcoolico, "est": 2}]
+        "Frutas (Sem Lactose)": [
+            {"item": "Goiaba", "p": p_fruta, "est": 4},
+            {"item": "Uva", "p": p_fruta, "est": 0},
+            {"item": "Maracujá", "p": p_fruta, "est": 0},
+            {"item": "Manga", "p": p_fruta, "est": 4},
+            {"item": "Morango", "p": p_fruta, "est": 0},
+            {"item": "Abacaxi c/ Hortelã", "p": p_fruta, "est": 1},
+            {"item": "Frutopia", "p": p_fruta, "est": 3}
+        ],
+        "Gourmet (Cremosos)": [
+            {"item": "Ninho c/ Nutella", "p": p_gourmet, "est": 5},
+            {"item": "Ninho c/ Morango", "p": p_gourmet, "est": 4},
+            {"item": "Chicabon", "p": p_gourmet, "est": 4},
+            {"item": "Mousse de Maracujá", "p": p_gourmet, "est": 3},
+            {"item": "Pudim de Leite", "p": p_gourmet, "est": 5},
+            {"item": "Açaí Cremoso", "p": p_gourmet, "est": 4},
+            {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}
+        ],
+        "Alcoólicos (+18)": [
+            {"item": "Piña Colada", "p": p_alcoolico, "est": 1},
+            {"item": "Sex on the Beach", "p": p_alcoolico, "est": 0},
+            {"item": "Caipirinha", "p": p_alcoolico, "est": 2},
+            {"item": "Batida de Maracujá", "p": p_alcoolico, "est": 2},
+            {"item": "Batida de Morango", "p": p_alcoolico, "est": 1}
+        ]
     }
 
     for cat, itens in estoque_sacoles.items():
@@ -56,17 +77,21 @@ else:
             for i in itens:
                 c1, c2, c3 = st.columns([3, 1, 1])
                 c1.write(f"**{i['item']}** - R$ {i['p']:.2f}")
-                c2.write(f"Estoque: {i['est']}")
-                q = c3.number_input("Qtd", 0, i['est'], key=f"q_{i['item']}", label_visibility="collapsed")
-                if q > 0:
-                    total_bruto += (q * i['p'])
-                    pedido.append(f"✅ {q}x {i['item']}")
+                c2.write(f"Est: {i['est']}")
+                if i['est'] > 0:
+                    q = c3.number_input("Qtd", 0, i['est'], key=f"q_{i['item']}", label_visibility="collapsed")
+                    if q > 0:
+                        total_bruto += (q * i['p'])
+                        pedido.append(f"✅ {q}x {i['item']}")
+                else:
+                    c3.write("❌")
 
-    # --- EMPADÃO (COM FOTO AO LADO) ---
+    # --- SALGADOS (FOTO CORRIGIDA PARA BRANCH 'MAIN') ---
     st.header("🥧 Salgados")
     col_img_e, col_txt_e = st.columns([1, 1.5])
     with col_img_e:
-        st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/empadao.jpeg")
+        # Link corrigido para a branch 'main'
+        st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg")
     with col_txt_e:
         st.write("**Empadão Frango (P)**")
         st.write("R$ 12.00 | Estoque: 4")
@@ -75,11 +100,12 @@ else:
             total_bruto += (q_emp * 12.00)
             pedido.append(f"✅ {q_emp}x Empadão P")
 
-    # --- BOLO (COM FOTO AO LADO) ---
+    # --- SOBREMESAS (FOTO CORRIGIDA PARA BRANCH 'MAIN') ---
     st.header("🍰 Sobremesas")
     col_img_b, col_txt_b = st.columns([1, 1.5])
     with col_img_b:
-        st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/bolo.jpeg")
+        # Link corrigido para a branch 'main'
+        st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg")
     with col_txt_b:
         st.write("**Crunch Cake (Pote)**")
         st.write("R$ 10.00 | Estoque: 4")
