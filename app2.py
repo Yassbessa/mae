@@ -68,9 +68,9 @@ elif st.session_state.etapa == "cadastro":
     novo_nome = st.text_input("Seu Nome Completo:")
     nova_senha = st.text_input("Crie uma Senha:", type="password")
     novo_nasc = st.date_input("Data de Nascimento:")
-    novo_end = st.text_input("Endereço (Ex: Rua Vinte e Quatro de Maio, 85):")
-    novo_cep = st.text_input("CEP (Ex: 20950-085):")
-    novas_inst = st.text_area("Instruções (Ex: Deixar na portaria, Apto 902):")
+    novo_end = st.text_input("Endereço:")
+    novo_cep = st.text_input("CEP :")
+    novas_inst = st.text_area("Instruções (Ex: Deixar na portaria, Apto XXX):")
 
     if st.button("FINALIZAR CADASTRO ✨"):
         if novo_nome and nova_senha and novo_cep:
