@@ -6,30 +6,21 @@ from datetime import date, datetime
 
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
-
-# SEU NOVO URL DA VERSÃO 2
 URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyByTKemIrdGk7y6HnHAGC-d8Vgxu_WoeVAdsBh8mLcR44-XQbSKY3E827lFT49i1YhBA/exec"
 
 # --- MEMÓRIA DO APP ---
-if 'etapa' not in st.session_state:
-    st.session_state.etapa = "boas_vindas"
-if 'user' not in st.session_state:
-    st.session_state.user = None
+if 'etapa' not in st.session_state: st.session_state.etapa = "boas_vindas"
+if 'user' not in st.session_state: st.session_state.user = None
 
-# Funções auxiliares para falar com a planilha
 def salvar_dados(lista, aba):
-    try:
-        requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista)
-    except:
-        st.error("Erro ao salvar dados. Verifique a internet.")
+    requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista)
 
 def ler_dados(aba):
     try:
         response = requests.get(f"{URL_WEB_APP}?aba={aba}")
         data = response.json()
         return pd.DataFrame(data[1:], columns=data[0])
-    except:
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
 # ==========================================
 # TELA 1: BOAS-VINDAS
@@ -44,89 +35,71 @@ if st.session_state.etapa == "boas_vindas":
         st.session_state.etapa = "cadastro"; st.rerun()
 
 # ==========================================
-# TELA 2: LOGIN COM SENHA
+# TELA 2: LOGIN (AGORA POR E-MAIL)
 # ==========================================
 elif st.session_state.etapa == "login":
-    st.title("👤 Identificação")
-    u_log = st.text_input("Nome cadastrado:")
+    st.title("👤 Login")
+    email_log = st.text_input("E-mail cadastrado:").strip().lower()
     p_log = st.text_input("Senha:", type="password")
     
-    if st.button("ACESSAR 🚀"):
+    col_l1, col_l2 = st.columns(2)
+    if col_l1.button("ACESSAR 🚀", type="primary"):
         df_u = ler_dados("Usuarios")
         if not df_u.empty:
-            # Busca o usuário na lista retornada pela planilha
-            match = df_u[(df_u['NOME'] == u_log) & (df_u['SENHA'].astype(str) == str(p_log))]
+            # Busca pelo E-MAIL agora
+            match = df_u[(df_u['EMAIL'] == email_log) & (df_u['SENHA'].astype(str) == str(p_log))]
             if not match.empty:
                 st.session_state.user = match.iloc[0].to_dict()
                 st.session_state.etapa = "cardapio"; st.rerun()
-            else:
-                st.error("Nome ou Senha incorretos.")
-        else:
-            st.warning("Nenhum usuário cadastrado ou erro na planilha.")
-
-    if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
+            else: st.error("E-mail ou Senha incorretos.")
+    
+    if col_l2.button("⬅️ Voltar"):
+        st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# TELA 3: CADASTRO (RESOLVE ERRO DE CAMPOS VAZIOS)
+# TELA 3: CADASTRO (COM E-MAIL E VOLTAR)
 # ==========================================
 elif st.session_state.etapa == "cadastro":
+    if st.button("⬅️ Cancelar e Voltar"):
+        st.session_state.etapa = "boas_vindas"; st.rerun()
+        
     st.title("📝 Cadastro de Cliente")
-    with st.form("meu_cadastro"):
+    with st.form("form_cad"):
         n_nome = st.text_input("Nome Completo:")
+        n_email = st.text_input("Seu melhor E-mail (será seu login):").strip().lower() # Novo identificador
         n_pass = st.text_input("Crie uma Senha:", type="password")
         n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
         n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
         n_bairro = st.text_input("Bairro:")
         n_cep = st.text_input("CEP:")
         n_inst = st.text_area("Instruções de Entrega (Ex: Apto 902):")
+        
         submit = st.form_submit_button("FINALIZAR CADASTRO ✨")
 
     if submit:
-        if n_nome and n_pass and n_end and n_cep and n_bairro:
-            # Envia os dados como uma lista para a aba 'Usuarios'
-            dados = [n_nome, str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
+        if n_nome and n_email and n_pass and n_end:
+            # Salva na ordem da nova coluna EMAIL
+            dados = [n_nome, n_email, str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
             salvar_dados(dados, "Usuarios")
-            st.success("Cadastro realizado! Agora faça seu Login.")
+            st.success("Cadastro realizado com sucesso! Redirecionando...")
             st.session_state.etapa = "login"
-        else:
-            st.error("Preencha todos os campos obrigatórios!")
+            st.rerun() # Passagem direta para o login
+        else: st.error("Preencha todos os campos obrigatórios!")
 
 # ==========================================
-# TELA 4: CARDÁPIO INTELIGENTE
+# TELA 4: CARDÁPIO (SÓ ENTRA COM LOGIN)
 # ==========================================
 elif st.session_state.etapa == "cardapio":
     u = st.session_state.user
     st.title(f"Olá, {u['NOME']}! 🍦")
     
-    # 🎂 Aniversário
-    if u['NASCIMENTO'] == date.today().strftime("%d/%m"):
-        st.balloons(); st.success("🎉 Parabéns! Hoje você tem brinde especial!")
+    if st.button("⬅️ Sair (Logout)"):
+        st.session_state.user = None
+        st.session_state.etapa = "boas_vindas"; st.rerun()
 
-    # --- TRAVA DO DESCONTO MORADOR ---
-    cupom = st.text_input("Cupom:").strip().upper()
+    # Trava do Cupom morador
+    cupom = st.text_input("Possui Cupom?").strip().upper()
     eh_morador = False
     if cupom == "MACHADORIBEIRO":
         end_u = str(u['ENDEREÇO']).upper()
-        if ("24 DE MAIO" in end_u or "VINTE E QUATRO DE MAIO" in end_u) and "85" in end_u:
-            st.success("Desconto morador ativado! ✅")
-            eh_morador = True
-        else:
-            st.error("Cupom exclusivo para moradores da Rua 24 de Maio, 85.")
-
-    # Exemplo de seletor de pedido
-    p_gourmet = 7.0 if eh_morador else 9.0
-    st.header("❄️ Sacolés Gourmet")
-    qtd_ninho = st.number_input(f"Ninho c/ Nutella (R$ {p_gourmet:.2f})", 0, 10)
-    
-    total = qtd_ninho * p_gourmet
-
-    if total > 0:
-        st.markdown(f"### Total: R$ {total:.2f}")
-        if st.button("🚀 ENVIAR PEDIDO NO WHATSAPP"):
-            dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
-            # Salva na aba 'Vendas_Geral'
-            venda = [dt_hoje, u['NOME'], u['ENDEREÇO'], u['NASCIMENTO'], "Ninho c/ Nutella", qtd_ninho, p_gourmet, total, "A combinar", u['INSTRUÇÕES']]
-            salvar_dados(venda, "Vendas_Geral")
-            
-            msg = f"🍦 *PEDIDO DE {u['NOME']}*\n📦 {qtd_ninho}x Ninho c/ Nutella\n💰 Total: R$ {total:.2f}"
-            st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/5521976141210?text={urllib.parse.quote(msg)}\' /">', unsafe_allow_html=True)
+        if ("2
