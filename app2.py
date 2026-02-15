@@ -17,15 +17,38 @@ def ler_dados(aba):
         response = requests.get(f"{URL_WEB_APP}?aba={aba}", timeout=10)
         if response.status_code == 200:
             data = response.json()
-            if len(data) > 1:
+            if len(data) > 1: # Verifica se tem mais que apenas o cabeçalho
                 return pd.DataFrame(data[1:], columns=data[0])
             else:
-                st.warning(f"A aba '{aba}' está vazia ou sem cabeçalhos.")
+                st.warning(f"⚠️ A aba '{aba}' está vazia. Cadastre um usuário primeiro!")
         else:
-            st.error(f"Erro no Script: Status {response.status_code}")
+            st.error(f"❌ Erro de conexão com a planilha (Status {response.status_code})")
     except Exception as e:
-        st.error(f"Erro de Conexão: {e}")
+        st.error(f"❌ Não consegui ler a planilha. Verifique o URL do Apps Script.")
     return pd.DataFrame()
+
+# TELA DE LOGIN
+elif st.session_state.etapa == "login":
+    st.title("👤 Login")
+    email_log = st.text_input("E-mail cadastrado:").strip().lower()
+    p_log = st.text_input("Senha:", type="password").strip()
+    
+    if st.button("ACESSAR 🚀", type="primary", use_container_width=True):
+        df_u = ler_dados("Usuarios")
+        
+        if not df_u.empty:
+            # Garante que não haja espaços extras nos dados da planilha
+            df_u['EMAIL'] = df_u['EMAIL'].astype(str).str.strip().str.lower()
+            df_u['SENHA'] = df_u['SENHA'].astype(str).str.strip()
+            
+            match = df_u[(df_u['EMAIL'] == email_log) & (df_u['SENHA'] == p_log)]
+            
+            if not match.empty:
+                st.session_state.user = match.iloc[0].to_dict()
+                st.session_state.etapa = "cardapio"
+                st.rerun()
+            else:
+                st.error("❌ E-mail ou Senha incorretos. Verifique os dados digitados.")
 
 # TELA DE LOGIN
 if st.session_state.etapa == "login":
