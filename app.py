@@ -2,7 +2,7 @@ import streamlit as st
 import urllib.parse
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Jaque é Doce!", page_icon="🐝", layout="centered")
+st.set_page_config(page_title="Ja Que é Doce!", page_icon="🐝", layout="centered")
 
 # --- CONTROLE DE NAVEGAÇÃO ---
 if 'foi_para_cardapio' not in st.session_state:
