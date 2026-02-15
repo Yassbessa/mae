@@ -16,7 +16,7 @@ if 'usuario_logado' not in st.session_state:
 
 # --- DADOS FIXOS ---
 NUMERO_JAQUE = "5521976141210"
-ENDERECO_RESTRITO = "RUA VINTE E QUATRO DE MAIO, 85"
+ENDERECO_RESTRITO = ["RUA VINTE E QUATRO DE MAIO, 85", "RUA 24 DE MAIO, 85"]
 CEPS_VALIDOS = ["20950-085", "20950-090"]
 
 # ==========================================
