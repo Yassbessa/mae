@@ -69,10 +69,10 @@ elif st.session_state.etapa == "cadastro":
         n_email = st.text_input("Seu melhor E-mail (será seu login):").strip().lower() # Novo identificador
         n_pass = st.text_input("Crie uma Senha:", type="password")
         n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
-        n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
+        n_end = st.text_input("Endereço:")
         n_bairro = st.text_input("Bairro:")
         n_cep = st.text_input("CEP:")
-        n_inst = st.text_area("Instruções de Entrega (Ex: Apto 902):")
+        n_inst = st.text_area("Instruções de Entrega:")
         
         submit = st.form_submit_button("FINALIZAR CADASTRO ✨")
 
