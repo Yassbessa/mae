@@ -5,108 +5,130 @@ import pandas as pd
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Jaque é Doce!", page_icon="🐝", layout="centered")
 
+# --- NAVEGAÇÃO ---
+if 'pagina' not in st.session_state:
+    st.session_state.pagina = 'inicio'
+if 'eh_morador' not in st.session_state:
+    st.session_state.eh_morador = False
+
 # --- CONTATOS ---
 NUMERO_YASMIN = "5521981816105" 
 NUMERO_JAQUE = "5521976141210" 
 CHAVE_PIX = "30.615.725 000155" 
 
-# --- SISTEMA DE CUPONS ---
-st.sidebar.title("🎟️ Cupons e Promoções")
-cupons_digitados = st.sidebar.text_input("Digite seus cupons (separe por vírgula):").upper()
-
-# Verifica quais cupons estão ativos
-lista_cupons = [c.strip() for c in cupons_digitados.split(",")]
-eh_morador = "MACHADORIBEIRO" in lista_cupons or "GARAGEMLOLA" in lista_cupons
-cupom_garagem = "GARAGEMLOLA" in lista_cupons
-cupom_niver = "ANIVERSARIO" in lista_cupons
-
-# Definição de preços
-p_fruta = 5.00 if eh_morador else 8.00
-p_gourmet = 7.00 if eh_morador else 9.00
-p_frutopia = 7.00 if eh_morador else 9.00
-p_alcoolico = 9.00 if eh_morador else 10.00
-
-# --- CARDÁPIO ---
-cardapio = {
-    "❄️ Sacolés Fruta": [
-        {"item": "Goiaba", "preco": p_fruta},
-        {"item": "Manga", "preco": p_fruta},
-        {"item": "Abacaxi c/ Hortelã", "preco": p_fruta},
-    ],
-    "🍫 Sacolés Gourmet": [
-        {"item": "Ninho c/ Nutella", "preco": p_gourmet},
-        {"item": "Chicabon", "preco": p_gourmet},
-        {"item": "Pudim de Leite", "preco": p_gourmet},
-    ],
-    "🔞 Alcoólicos": [
-        {"item": "Piña Colada", "preco": p_alcoolico},
-        {"item": "Batida Morango", "preco": p_alcoolico},
-    ],
-    "🥧 Comidas": [
-        {"item": "Empadão Frango (P)", "preco": 12.00},
-        {"item": "Crunch Cake (Pote)", "preco": 10.00},
-    ]
-}
-
-st.title("Jaque é Doce! 🐝")
-if eh_morador: st.success("🏠 Preços de Morador Ativados!")
-if cupom_niver: st.balloons(); st.info("🎂 Parabéns! 1 Sacolé de brinde aplicado!")
-
-# --- SELEÇÃO DE PRODUTOS ---
-pedido_atual = []
-total_bruto = 0.0
-
-for cat, itens in cardapio.items():
-    st.subheader(cat)
-    for p in itens:
-        col1, col2 = st.columns([4, 1])
-        qtd = col2.number_input(f"Qtd", 0, 20, key=p['item'])
-        col1.write(f"**{p['item']}** - R$ {p['preco']:.2f}")
-        if qtd > 0:
-            for _ in range(qtd):
-                pedido_atual.append({"Sabor": p['item'], "Preco": p['preco'], "Categoria": cat})
-            total_bruto += (qtd * p['preco'])
-
-# --- LÓGICA DE DESCONTOS ACUMULADOS ---
-valor_desconto = 0.0
-if cupom_niver and len(pedido_atual) > 0:
-    # Acha o sacolé mais barato para dar de brinde
-    apenas_sacoles = [p for p in pedido_atual if "Sacolé" in p['Categoria'] or "Alcoólico" in p['Categoria']]
-    if apenas_sacoles:
-        brinde = min(apenas_sacoles, key=lambda x: x['Preco'])
-        valor_desconto = brinde['Preco']
-
-total_com_descontos = total_bruto - valor_desconto
-
-# --- FINALIZAÇÃO ---
-if total_bruto > 0:
-    st.divider()
-    nome = st.text_input("Nome:")
-    apto = st.text_input("Apartamento:")
-    entrega = st.radio("Entrega:", ["Agora", "Buscar no 902", "Agendar"])
+# --- TELA 1: INTERFACE DE BOAS-VINDAS ---
+if st.session_state.pagina == 'inicio':
+    st.markdown("<h1 style='text-align: center;'>Jaque é Doce! 🐝</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    st.write(f"**Subtotal:** R$ {total_bruto:.2f}")
-    if valor_desconto > 0: st.write(f"🎁 **Brinde Niver:** - R$ {valor_desconto:.2f}")
-    st.subheader(f"Total: R$ {total_com_descontos:.2f}")
+    # Foto da Capa (Pode trocar pelo link da sua logo)
+    st.image("https://images.unsplash.com/photo-1553177595-4de2bb0842b9?q=80&w=500", caption="Doces feitos com amor ❤️", use_container_width=True)
+    
+    st.markdown("### Bem-vindo(a) ao nosso cardápio digital!")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🏠 SOU MORADOR", use_container_width=True):
+            st.session_state.pagina = 'cupom_morador'
+            st.rerun()
+    with col2:
+        if st.button("🍦 VISITANTE / GERAL", use_container_width=True):
+            st.session_state.eh_morador = False
+            st.session_state.pagina = 'cardapio'
+            st.rerun()
 
-    if nome and apto:
-        destinatario = NUMERO_YASMIN if eh_morador else NUMERO_JAQUE
-        msg = f"🚚 *PEDIDO - {'YASMIN' if eh_morador else 'JAQUE'}*\n📍 *APTO:* {apto} ({nome})\n🕒 *HORA:* {entrega}\n"
-        msg += "------------------\n"
-        for p in set([x['Sabor'] for x in pedido_atual]):
-            qtd_item = len([x for x in pedido_atual if x['Sabor'] == p])
-            msg += f"✅ {qtd_item}x {p}\n"
-        msg += f"------------------\n💰 *TOTAL: R$ {total_com_descontos:.2f}*"
-        
-        st.link_button("🚀 ENVIAR PEDIDO", f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}")
+# --- TELA 2: VALIDAÇÃO ---
+elif st.session_state.pagina == 'cupom_morador':
+    st.subheader("🏠 Validação de Morador")
+    cupom_validar = st.text_input("Insira o cupom do condomínio:").strip().upper()
+    
+    if st.button("Validar"):
+        if cupom_validar in ["MACHADORIBEIRO", "GARAGEMLOLA"]:
+            st.session_state.eh_morador = True
+            st.session_state.pagina = 'cardapio'
+            st.rerun()
+        else:
+            st.error("Cupom inválido!")
+    if st.button("Voltar"):
+        st.session_state.pagina = 'inicio'
+        st.rerun()
 
-# --- RELATÓRIOS (DASHBOARD DA YASMIN) ---
-with st.expander("📊 Relatórios de Vendas (Área Administrativa)"):
-    if nome and apto and len(pedido_atual) > 0:
-        st.write("### Venda Atual Detalhada")
-        df_venda = pd.DataFrame(pedido_atual)
-        st.dataframe(df_venda)
+# --- TELA 3: CARDÁPIO COMPLETO ---
+elif st.session_state.pagina == 'cardapio':
+    if st.button("⬅️ Voltar"):
+        st.session_state.pagina = 'inicio'
+        st.rerun()
+
+    # Preços Automáticos
+    p_fruta = 5.00 if st.session_state.eh_morador else 8.00
+    p_gourmet = 7.00 if st.session_state.eh_morador else 9.00
+    p_alcoolico = 9.00 if st.session_state.eh_morador else 10.00
+
+    st.title("Cardápio Jaque é Doce! 🐝")
+    if st.session_state.eh_morador:
+        st.success("✅ Preços de Morador Ativos")
+
+    pedido = []
+    total = 0.0
+
+    # --- CATEGORIA: SACOLÉS FRUTA ---
+    st.header("❄️ Sacolés de Fruta")
+    st.image("https://images.unsplash.com/photo-1505394033343-431693360211?q=80&w=500")
+    itens_fruta = ["Goiaba", "Manga", "Abacaxi com Hortelã", "Frutopia"]
+    for item in itens_fruta:
+        qtd = st.number_input(f"{item} - R$ {p_fruta:.2f}", 0, 10, key=f"fruta_{item}")
+        if qtd > 0:
+            total += (qtd * p_fruta)
+            pedido.append(f"✅ {qtd}x {item}")
+
+    # --- CATEGORIA: GOURMET ---
+    st.header("🍫 Sacolés Gourmet")
+    st.image("https://images.unsplash.com/photo-1481391243133-f96216d51df7?q=80&w=500")
+    itens_gourmet = ["Ninho c/ Nutella", "Ninho c/ Morango", "Chicabon", "Mousse de Maracujá", "Pudim de Leite", "Açaí Cremoso", "Coco Cremoso"]
+    for item in itens_gourmet:
+        qtd = st.number_input(f"{item} - R$ {p_gourmet:.2f}", 0, 10, key=f"gourmet_{item}")
+        if qtd > 0:
+            total += (qtd * p_gourmet)
+            pedido.append(f"✅ {qtd}x {item}")
+
+    # --- CATEGORIA: ALCOÓLICOS ---
+    st.header("🔞 Alcoólicos (+18)")
+    st.image("https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=500")
+    itens_alc = ["Piña Colada", "Caipirinha", "Batida de Maracujá", "Batida de Morango"]
+    for item in itens_alc:
+        qtd = st.number_input(f"{item} - R$ {p_alcoolico:.2f}", 0, 10, key=f"alc_{item}")
+        if qtd > 0:
+            total += (qtd * p_alcoolico)
+            pedido.append(f"✅ {qtd}x {item}")
+
+    # --- CATEGORIA: EMPADÃO ---
+    st.header("🥧 Empadão Cremoso")
+    st.image("https://images.unsplash.com/photo-1626078436898-90098d5be326?q=80&w=500")
+    qtd_emp_p = st.number_input("Empadão Frango (P) - R$ 12.00", 0, 10, key="emp_p")
+    qtd_emp_g = st.number_input("Empadão Frango (G) - R$ 18.00", 0, 10, key="emp_g")
+    total += (qtd_emp_p * 12.00) + (qtd_emp_g * 18.00)
+    if qtd_emp_p > 0: pedido.append(f"✅ {qtd_emp_p}x Empadão P")
+    if qtd_emp_g > 0: pedido.append(f"✅ {qtd_emp_g}x Empadão G")
+
+    # --- CATEGORIA: BOLO ---
+    st.header("🍰 Sobremesas")
+    st.image("https://images.unsplash.com/photo-1587132137056-bfbf0166836e?q=80&w=500")
+    qtd_bolo = st.number_input("Crunch Cake (Pote) - R$ 10.00", 0, 10, key="bolo")
+    total += (qtd_bolo * 10.00)
+    if qtd_bolo > 0: pedido.append(f"✅ {qtd_bolo}x Bolo Pote")
+
+    # --- FINALIZAÇÃO ---
+    if total > 0:
+        st.divider()
+        nome = st.text_input("Seu Nome:")
+        apto = st.text_input("Seu Apartamento:")
+        entrega = st.radio("Como prefere?", ["Entregar agora", "Buscar no 902", "Agendar"])
         
-        st.write("### Ranking por Apartamento (Simulação)")
-        # Quando tivermos a planilha, aqui mostrará quem compra mais
-        st.bar_chart({"Apto 901": 5, f"Apto {apto}": len(pedido_atual)})
+        st.subheader(f"Total: R$ {total:.2f}")
+
+        if nome and apto:
+            destinatario = NUMERO_YASMIN if st.session_state.eh_morador else NUMERO_JAQUE
+            lista_itens = "\n".join(pedido)
+            msg = f"🍦 *PEDIDO PARA {'YASMIN' if st.session_state.eh_morador else 'JAQUE'}*\n📍 Local: {apto}\n👤 Nome: {nome}\n🕒 Hora: {entrega}\n\n*ITENS:*\n{lista_itens}\n\n💰 *Total: R$ {total:.2f}*"
+            
+            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+            st.link_button("🚀 FINALIZAR NO WHATSAPP", link, type="primary")
