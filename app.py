@@ -66,7 +66,7 @@ else:
     st.header("🥧 Salgados")
     col_img_e, col_txt_e = st.columns([1, 1.5])
     with col_img_e:
-        st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/empadão2.jpeg")
+        st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/empadao.jpeg")
     with col_txt_e:
         st.write("**Empadão Frango (P)**")
         st.write("R$ 12.00 | Estoque: 4")
