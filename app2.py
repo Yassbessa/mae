@@ -1,123 +1,144 @@
 import streamlit as st
 import pandas as pd
-import requests
 import urllib.parse
-from datetime import date, datetime
+from datetime import datetime
+import os
 
-# --- CONFIGURAÇÃO (VOLTAMOS PARA O MODO CENTRALIZADO) ---
-st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="Ja Que É Doce - Gestão", page_icon="🐝", layout="wide")
 
-# SEU URL DO APPS SCRIPT
-URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyl8rhT4ucrbMj9010RCw9Y94KOs-apa-DW9qmDSDFEhP3vT-UiD7Wzz6tdq0ja46Ga7Q/exec"
+# --- LOGIN ADMIN ---
+ADMIN_USER = "admin"
+ADMIN_PASS = "jqd9191"
 
-# --- LOGIN DO MODERADOR (VOCÊ E SUA MÃE) ---
-EMAIL_ADMIN = "admin"
-SENHA_ADMIN = "jqd9191" 
+# --- FUNÇÕES DE BANCO DE DADOS LOCAL (SEM SHEETS!) ---
+def carregar_dados(arquivo, colunas):
+    if os.path.exists(arquivo):
+        return pd.read_csv(arquivo)
+    return pd.DataFrame(columns=colunas)
 
-# --- MEMÓRIA DO APP ---
+def salvar_dados(df, arquivo):
+    df.to_csv(arquivo, index=False)
+
+# Inicializando arquivos
+ARQUIVO_VENDAS = "historico_vendas.csv"
+ARQUIVO_CLIENTES = "base_clientes.csv"
+
+# --- MEMÓRIA DA SESSÃO ---
 if 'etapa' not in st.session_state: st.session_state.etapa = "boas_vindas"
-if 'user' not in st.session_state: st.session_state.user = None
-
-# Funções de Conexão
-def salvar_dados(lista, aba):
-    try:
-        r = requests.post(f"{URL_WEB_APP}?aba={aba}", json=lista, timeout=15)
-        return True if "Sucesso" in r.text else False
-    except: return False
-
-def ler_dados(aba):
-    try:
-        response = requests.get(f"{URL_WEB_APP}?aba={aba}", timeout=10)
-        data = response.json()
-        if len(data) > 1: return pd.DataFrame(data[1:], columns=data[0])
-    except: pass
-    return pd.DataFrame()
+if 'usuario' not in st.session_state: st.session_state.user = None
 
 # ==========================================
 # TELA 1: BOAS-VINDAS
 # ==========================================
 if st.session_state.etapa == "boas_vindas":
-    st.markdown("<h1 style='text-align: center; color: #E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
     st.write("---")
     c1, c2 = st.columns(2)
-    if c1.button("🔑 ENTRAR / LOGIN", use_container_width=True):
-        st.session_state.etapa = "login"; st.rerun()
-    if c2.button("✨ CADASTRAR", use_container_width=True):
+    if c1.button("🛍️ FAZER PEDIDO", use_container_width=True):
         st.session_state.etapa = "cadastro"; st.rerun()
+    if c2.button("👑 PAINEL ADMIN", use_container_width=True):
+        st.session_state.etapa = "login_admin"; st.rerun()
 
 # ==========================================
-# TELA 2: LOGIN (AGORA COM ACESSO MODERADOR)
+# TELA 2: LOGIN ADMIN
 # ==========================================
-elif st.session_state.etapa == "login":
-    st.title("👤 Identificação")
-    email_log = st.text_input("E-mail:").strip().lower()
-    p_log = st.text_input("Senha:", type="password").strip()
-    
-    if st.button("ACESSAR 🚀", type="primary", use_container_width=True):
-        # 1. Tenta entrar como Moderadora (Admin)
-        if email_log == EMAIL_ADMIN and p_log == SENHA_ADMIN:
-            st.session_state.etapa = "moderador"; st.rerun()
-        
-        # 2. Tenta entrar como Cliente comum
-        else:
-            df_u = ler_dados("Usuarios")
-            if not df_u.empty:
-                df_u['EMAIL'] = df_u['EMAIL'].astype(str).str.strip().str.lower()
-                df_u['SENHA'] = df_u['SENHA'].astype(str).str.strip()
-                match = df_u[(df_u['EMAIL'] == email_log) & (df_u['SENHA'] == p_log)]
-                if not match.empty:
-                    st.session_state.user = match.iloc[0].to_dict()
-                    st.session_state.etapa = "cardapio"; st.rerun()
-                else: st.error("❌ E-mail ou Senha incorretos.")
-            else: 
-                # Esta é a mensagem que você já viu!
-                st.warning("⚠️ Planilha vazia. Cadastre-se primeiro!")
-
-    if st.button("⬅️ VOLTAR"): st.session_state.etapa = "boas_vindas"; st.rerun()
+elif st.session_state.etapa == "login_admin":
+    st.title("🔑 Acesso Administrativo")
+    u = st.text_input("Usuário:")
+    p = st.text_input("Senha:", type="password")
+    if st.button("ENTRAR 🚀"):
+        if u == ADMIN_USER and p == SENHA_ADMIN: # Use jqd9191
+            st.session_state.etapa = "painel_admin"; st.rerun()
+        else: st.error("Incorreto!")
+    if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# TELA 3: CADASTRO (FICOU MENOR E MELHOR AGORA!)
+# TELA 3: CADASTRO DO CLIENTE
 # ==========================================
 elif st.session_state.etapa == "cadastro":
-    st.title("📝 Cadastro de Cliente")
-    with st.form("form_cad"):
-        n_nome = st.text_input("Nome Completo:")
-        n_email = st.text_input("E-mail (será seu login):") 
-        n_pass = st.text_input("Crie uma Senha:", type="password")
-        n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
-        n_end = st.text_input("Endereço (Rua e Número):")
-        n_bairro = st.text_input("Bairro:")
-        n_cep = st.text_input("CEP:")
-        n_inst = st.text_area("Instruções de Entrega:")
-        btn_cad = st.form_submit_button("FINALIZAR CADASTRO ✨")
-
-    if btn_cad:
-        if n_nome and n_email and n_pass and n_end:
-            dados = [n_nome, n_email.strip().lower(), str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
-            if salvar_dados(dados, "Usuarios"):
-                st.success("✅ Tudo certo! Agora faça o login.")
-                st.session_state.etapa = "login"; st.rerun()
-            else: st.error("Erro técnico ao salvar. Tente de novo.")
-        else: st.error("⚠️ Preencha todos os campos obrigatórios!")
+    st.title("📝 Seus Dados")
+    with st.form("cad"):
+        nome = st.text_input("Nome:")
+        end = st.text_input("Endereço/Apto:")
+        bairro = st.text_input("Bairro:")
+        if st.form_submit_button("IR PARA O CARDÁPIO"):
+            if nome and end:
+                # Salva o cliente na base histórica
+                df_c = carregar_dados(ARQUIVO_CLIENTES, ["Nome", "Endereço", "Bairro"])
+                if nome not in df_c['Nome'].values:
+                    nova_linha = pd.DataFrame([{"Nome": nome, "Endereço": end, "Bairro": bairro}])
+                    df_c = pd.concat([df_c, nova_linha], ignore_index=True)
+                    salvar_dados(df_c, ARQUIVO_CLIENTES)
+                
+                st.session_state.user = {"nome": nome, "end": end, "bairro": bairro}
+                st.session_state.etapa = "cardapio"; st.rerun()
+            else: st.error("Preencha tudo!")
 
 # ==========================================
-# TELA 5: PAINEL DA MODERADORA (SÓ VOCÊ E SUA MÃE)
+# TELA 4: CARDÁPIO E PEDIDO
 # ==========================================
-elif st.session_state.etapa == "moderador":
-    st.title("👑 Painel de Controle - Moderadoras")
-    st.write("Bem-vinda, Yasmin! Aqui vocês veem tudo sem abrir o Google.")
+elif st.session_state.etapa == "cardapio":
+    u = st.session_state.user
+    st.title(f"Olá, {u['nome']}!")
     
-    if st.button("⬅️ SAIR DO PAINEL"):
-        st.session_state.etapa = "boas_vindas"; st.rerun()
-
-    tab1, tab2 = st.tabs(["👥 Clientes Cadastrados", "💰 Pedidos"])
+    sabores = {
+        "Ninho c/ Nutella": 9.0,
+        "Morango c/ Leite Moça": 8.0,
+        "Paçoca": 7.5
+    }
     
-    with tab1:
-        df_c = ler_dados("Usuarios")
-        if not df_c.empty: st.dataframe(df_c, use_container_width=True)
-        else: st.info("Nenhum cliente cadastrado ainda.")
+    pedido = {}
+    for s, p in sabores.items():
+        qtd = st.number_input(f"{s} (R$ {p:.2f})", 0, 10, key=s)
+        if qtd > 0: pedido[s] = qtd
 
-    with tab2:
-        df_v = ler_dados("Vendas_Geral")
-        if not df_v.empty: st.dataframe(df_v, use_container_width=True)
-        else: st.info("Nenhuma venda realizada ainda.")
+    if pedido:
+        total = sum(sabores[s] * q for s, q in pedido.items())
+        st.markdown(f"### Total: R$ {total:.2f}")
+        
+        if st.button("✅ FINALIZAR"):
+            # GRAVA A VENDA NO BANCO DE DADOS INTERNO
+            df_v = carregar_dados(ARQUIVO_VENDAS, ["Data", "Cliente", "Endereço", "Sabor", "Qtd", "Total"])
+            for s, q in pedido.items():
+                nova_venda = pd.DataFrame([{
+                    "Data": datetime.now().strftime("%d/%m/%Y"),
+                    "Cliente": u['nome'],
+                    "Endereço": u['end'],
+                    "Sabor": s,
+                    "Qtd": q,
+                    "Total": q * sabores[s]
+                }])
+                df_v = pd.concat([df_v, nova_venda], ignore_index=True)
+            salvar_dados(df_v, ARQUIVO_VENDAS)
+            
+            # Zap
+            msg = f"🍦 *NOVO PEDIDO*\n👤 {u['nome']}\n📦 {pedido}\n💰 Total: R$ {total:.2f}"
+            st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/5521976141210?text={urllib.parse.quote(msg)}\' /">', unsafe_allow_html=True)
+
+# ==========================================
+# TELA 5: PAINEL ADMIN (INTELIGÊNCIA)
+# ==========================================
+elif st.session_state.etapa == "painel_admin":
+    st.title("👑 Painel de Inteligência Ja Que É Doce")
+    if st.button("⬅️ SAIR"): st.session_state.etapa = "boas_vindas"; st.rerun()
+    
+    df_v = carregar_dados(ARQUIVO_VENDAS, [])
+    
+    if not df_v.empty:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🏆 Sabores Mais Vendidos")
+            ranking = df_v.groupby("Sabor")["Qtd"].sum().sort_values(ascending=False)
+            st.bar_chart(ranking)
+            
+        with col2:
+            st.subheader("📍 Onde pedem mais?")
+            locais = df_v.groupby("Endereço")["Total"].sum().sort_values(ascending=False)
+            st.table(locais)
+
+        st.subheader("📋 Histórico Completo")
+        st.dataframe(df_v, use_container_width=True)
+    else:
+        st.info("Aguardando as primeiras vendas!")
