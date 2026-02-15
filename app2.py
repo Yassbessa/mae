@@ -70,34 +70,52 @@ elif st.session_state.etapa == "login":
         st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# ETAPA 3: CADASTRO (COM FORMULÁRIO ANTI-ERRO)
+# ETAPA 3: CADASTRO (RESOLVENDO O ERRO DE CAMPOS VAZIOS)
 # ==========================================
 elif st.session_state.etapa == "cadastro":
     st.title("📝 Cadastro de Cliente")
-    # O 'with st.form' impede o erro de 'campos vazios'
-    with st.form("meu_cadastro"):
+    
+    # O formulário 'st.form' obriga o app a ler tudo antes de clicar no botão
+    with st.form("registro_final"):
         n_nome = st.text_input("Nome Completo:")
-        n_email = st.text_input("E-mail (será seu login):").strip().lower()
+        n_email = st.text_input("Seu melhor E-mail (será seu Login):") # CAMPO OBRIGATÓRIO
         n_pass = st.text_input("Crie uma Senha:", type="password")
         n_nasc = st.date_input("Nascimento:", min_value=date(1930, 1, 1), value=date(2000, 1, 1))
         n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85):")
         n_bairro = st.text_input("Bairro:")
-        n_cep = st.text_input("CEP:")
-        n_inst = st.text_area("Instruções de Entrega:")
+        n_cep = st.text_input("CEP (Apenas números):")
+        n_inst = st.text_area("Instruções (Ex: Apto 902):")
         
-        # Botão especial do formulário
-        btn_finalizar = st.form_submit_button("FINALIZAR CADASTRO ✨")
+        btn_confirmar = st.form_submit_button("FINALIZAR CADASTRO ✨")
 
-    if btn_finalizar:
+    if btn_confirmar:
+        # O sistema só salva se estes 4 principais estiverem preenchidos
         if n_nome and n_email and n_pass and n_end:
-            # Organiza os dados para as colunas da sua planilha
-            dados = [n_nome, n_email, str(n_pass), n_nasc.strftime("%d/%m"), n_end.upper(), n_bairro.upper(), n_cep, n_inst]
-            salvar_dados(dados, "Usuarios")
-            st.success("Cadastro realizado! Verifique sua planilha e faça o login.")
-            st.session_state.etapa = "login"; st.rerun()
+            try:
+                # Organiza os dados para as colunas: NOME, EMAIL, SENHA, NASCIMENTO, ENDEREÇO, BAIRRO, CEP, INSTRUÇÕES
+                # IMPORTANTE: A ordem abaixo deve ser igual à da sua planilha!
+                dados_lista = [
+                    n_nome, 
+                    n_email.strip().lower(), 
+                    str(n_pass), 
+                    n_nasc.strftime("%d/%m"), 
+                    n_end.upper(), 
+                    n_bairro.upper(), 
+                    n_cep, 
+                    n_inst
+                ]
+                
+                # Envia para a planilha
+                salvar_dados(dados_lista, "Usuarios")
+                
+                st.success("✅ Cadastro salvo na planilha! Agora você pode entrar.")
+                st.session_state.etapa = "login"
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar: {e}")
         else:
-            st.error("Preencha todos os campos obrigatórios!") #
-
+            # Esse é o erro que você está vendo agora
+            st.error("⚠️ Por favor, preencha o Nome, E-mail, Senha e Endereço!")
 # ==========================================
 # ETAPA 4: CARDÁPIO (O DESTINO FINAL!)
 # ==========================================
