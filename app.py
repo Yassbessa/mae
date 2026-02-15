@@ -79,3 +79,24 @@ else:
     st.header("🍰 Sobremesas")
     col_img_b, col_txt_b = st.columns([1, 1.5])
     with col_img_b:
+        st.image("https://raw.githubusercontent.com/Yassbessa/mae/principal/bolo.jpeg")
+    with col_txt_b:
+        st.write("**Crunch Cake (Pote)**")
+        st.write("R$ 10.00 | Estoque: 4")
+        q_bolo = st.number_input("Quantidade", 0, 4, key="q_bolo")
+        if q_bolo > 0:
+            total_bruto += (q_bolo * 10.00)
+            pedido.append(f"✅ {q_bolo}x Bolo Pote")
+
+    # --- FINALIZAÇÃO ---
+    if total_bruto > 0:
+        st.divider()
+        st.subheader(f"Total: R$ {total_bruto:.2f}")
+        nome = st.text_input("Seu Nome:")
+        apto = st.text_input("Seu Apto / Bloco:")
+        entrega = st.radio("Como prefere?", ["Entregar agora", "Buscar no 902", "Agendar"])
+        
+        if nome and apto:
+            destinatario = NUMERO_YASMIN if eh_morador else NUMERO_JAQUE
+            msg = f"🍦 *NOVO PEDIDO*\n📍 Apto: {apto}\n👤 Nome: {nome}\n🕒 Hora: {entrega}\n\n*ITENS:*\n" + "\n".join(pedido)
+            st.link_button("🚀 ENVIAR PEDIDO", f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}", type="primary")
