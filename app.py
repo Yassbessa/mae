@@ -8,10 +8,11 @@ st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="center
 if 'abriu_cardapio' not in st.session_state:
     st.session_state.abriu_cardapio = False
 
-# --- CONTATOS E DADOS FIXOS ---
+# --- DADOS FIXOS ---
 NUMERO_YASMIN = "5521981816105" 
 NUMERO_JAQUE = "5521976141210" 
 CHAVE_PIX = "30.615.725 000155" 
+EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
 
 # --- TELA 1: BOAS-VINDAS ---
 if not st.session_state.abriu_cardapio:
@@ -40,27 +41,26 @@ else:
     p_gourmet = 7.00 if eh_morador else 9.00
     p_alcoolico = 9.00 if eh_morador else 10.00
 
-    pedido_lista = [] # Para a mensagem do WhatsApp
-    dados_venda = []  # Para as tabelas de relatório da Yasmin
+    pedido_lista = [] 
+    dados_venda = []  
     total_bruto = 0.0
 
     # --- CATEGORIA: SACOLÉS ---
     st.header("❄️ Sacolés")
     estoque_sacoles = {
-        "Frutas (Sem Lactose)": [
+        "Frutas": [
             {"item": "Goiaba", "p": p_fruta, "est": 4},
             {"item": "Manga", "p": p_fruta, "est": 4},
             {"item": "Abacaxi c/ Hortelã", "p": p_fruta, "est": 1},
             {"item": "Frutopia", "p": p_fruta, "est": 3}
         ],
-        "Gourmet (Cremosos)": [
+        "Gourmet": [
             {"item": "Ninho c/ Nutella", "p": p_gourmet, "est": 5},
-            {"item": "Ninho c/ Morango", "p": p_gourmet, "est": 4},
             {"item": "Chicabon", "p": p_gourmet, "est": 4},
             {"item": "Pudim de Leite", "p": p_gourmet, "est": 5},
             {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}
         ],
-        "Alcoólicos (+18)": [
+        "Alcoólicos": [
             {"item": "Piña Colada", "p": p_alcoolico, "est": 1},
             {"item": "Caipirinha", "p": p_alcoolico, "est": 2}
         ]
@@ -81,28 +81,28 @@ else:
                 else:
                     c3.write("❌")
 
-    # --- CATEGORIA: SALGADOS (COM EMPADÃO GRANDE) ---
-    st.header("🥧 Salgados (Prontos e Congelados)")
+    # --- CATEGORIA: SALGADOS ---
+    st.header("🥧 Salgados")
     col_img_e, col_txt_e = st.columns([1, 1.5])
     with col_img_e:
         st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg")
     with col_txt_e:
-        # Pequeno
         st.write("**Empadão Frango (P - 220ml)**")
         st.write("R$ 12.00 | Estoque: 5")
-        q_emp_p = st.number_input("Qtd Pequeno", 0, 5, key="q_emp_p")
-        
+        q_p = st.number_input("Qtd Pequeno", 0, 5, key="q_emp_p")
         st.write("---")
-        
-        # Grande (Estoque 0 conforme solicitado)
         st.write("**Empadão Frango (G - 500ml)**")
         st.write("R$ 18.00 | Estoque: 0")
-        q_emp_g = st.number_input("Qtd Grande", 0, 0, key="q_emp_g") # Limitado a 0
+        q_g = st.number_input("Qtd Grande", 0, 0, key="q_emp_g") # Estoque 0
 
-    if q_emp_p > 0:
-        total_bruto += (q_emp_p * 12.00)
-        pedido_lista.append(f"✅ {q_emp_p}x Empadão P")
-        dados_venda.append({"Item": "Empadão Frango (P)", "Tipo": "Salgado", "Quantidade": q_emp_p, "Subtotal": q_emp_p * 12.00})
+    if q_p > 0:
+        total_bruto += (q_p * 12.00)
+        pedido_lista.append(f"✅ {q_p}x Empadão P")
+        dados_venda.append({"Item": "Empadão (P)", "Tipo": "Salgado", "Quantidade": q_p, "Subtotal": q_p * 12.00})
+    if q_g > 0:
+        total_bruto += (q_g * 18.00)
+        pedido_lista.append(f"✅ {q_g}x Empadão G")
+        dados_venda.append({"Item": "Empadão (G)", "Tipo": "Salgado", "Quantidade": q_g, "Subtotal": q_g * 18.00})
 
     # --- CATEGORIA: BOLO ---
     st.header("🍰 Sobremesas")
@@ -118,49 +118,52 @@ else:
             pedido_lista.append(f"✅ {q_bolo}x Bolo Pote")
             dados_venda.append({"Item": "Crunch Cake", "Tipo": "Bolo", "Quantidade": q_bolo, "Subtotal": q_bolo * 10.00})
 
-    # --- FINALIZAÇÃO E DADOS DE ENTREGA ---
+    # --- FINALIZAÇÃO ---
     if total_bruto > 0:
         st.divider()
-        st.subheader(f"Total: R$ {total_bruto:.2f}")
-        
+        st.subheader("🏁 Finalizar Pedido")
         nome = st.text_input("Seu Nome:")
         
         if eh_morador:
-            # Opções exclusivas para vizinhos
             apto = st.text_input("Seu Apartamento:")
-            entrega_op = st.radio("Opção de Entrega/Retirada:", ["Entregar agora", "Buscar no 902", "Agendar Entrega"])
-            detalhe_agendamento = ""
+            entrega_op = st.radio("Entrega:", ["Entregar agora", "Buscar no 902", "Agendar Entrega"])
+            detalhe_entrega = f"Apto: {apto} | Modo: {entrega_op}"
             if entrega_op == "Agendar Entrega":
-                detalhe_agendamento = st.text_input("Para qual horário deseja agendar?")
-            info_entrega = f"Apto: {apto} | Opção: {entrega_op} {detalhe_agendamento}"
+                horario = st.text_input("Horário desejado:")
+                detalhe_entrega += f" ({horario})"
         else:
-            # Opções para clientes externos
             apto = "Externo"
-            st.markdown("### 🏠 Informações para Entrega")
-            endereco = st.text_input("Endereço Completo:")
-            quem_recebe = st.text_input("Com quem podemos deixar o pedido?")
-            instrucoes = st.text_area("Instruções Adicionais (onde bater/interfonar, etc.):")
-            info_entrega = f"Endereço: {endereco}\nRecebedor: {quem_recebe}\nInstruções: {instrucoes}"
+            endereco = st.text_input("Endereço de Entrega:")
+            quem = st.text_input("Quem recebe?")
+            instrucoes = st.text_area("Instruções (onde bater/interfonar):")
+            detalhe_entrega = f"Endereço: {endereco} | Recebe: {quem} | Obs: {instrucoes}"
 
-        if nome and (apto != "" or endereco != ""):
+        # --- PAGAMENTO ---
+        st.markdown("### 💰 Pagamento")
+        forma_pagto = st.radio("Forma de Pagamento:", ["PIX", "Dinheiro", "Cartão"])
+        
+        if forma_pagto == "PIX":
+            st.info(f"🔑 **Chave PIX:** {CHAVE_PIX}\n\n📧 Envie o comprovante para **{EMAIL_COMPROVANTE}**\n📝 **Título do e-mail:** Comprovante Apto {apto if eh_morador else 'Externo'}")
+
+        if nome and (eh_morador and apto or not eh_morador and endereco):
             destinatario = NUMERO_YASMIN if eh_morador else NUMERO_JAQUE
             lista_msg = "\n".join(pedido_lista)
-            msg = f"🍦 *NOVO PEDIDO*\n👤 Nome: {nome}\n📍 {info_entrega}\n\n*ITENS:*\n{lista_msg}\n\n💰 *Total: R$ {total_bruto:.2f}*"
+            msg = f"🍦 *NOVO PEDIDO*\n👤 Nome: {nome}\n📍 {detalhe_entrega}\n💳 Pagto: {forma_pagto}\n\n*ITENS:*\n{lista_msg}\n\n💰 *TOTAL: R$ {total_bruto:.2f}*"
             
             st.link_button("🚀 ENVIAR PEDIDO NO WHATSAPP", f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}", type="primary")
 
-            # --- ÁREA DA YASMIN: RELATÓRIOS ---
+            # --- ÁREA DA YASMIN: TABELAS ---
             with st.expander("📊 Área da Yasmin (Relatório de Vendas)"):
-                st.write(f"### 📈 Resumo do Pedido Atual: {nome}")
+                st.write(f"### 📈 Relatório do Pedido: {nome}")
                 
-                # Tabela 1: Quantidade e Sabor
+                # Tabela 1: Detalhe por Sabor
                 df_detalhado = pd.DataFrame(dados_venda)
-                st.write("**Tabela de Itens Selecionados:**")
+                st.write("**Itens e Sabores Selecionados:**")
                 st.table(df_detalhado)
                 
-                # Tabela 2: Resumo para o Ranking
+                # Tabela 2: Ranking (Simulado para esta venda)
                 st.write("**Ranking por Apartamento (Registro desta venda):**")
-                ranking_df = pd.DataFrame([{"Apartamento": apto, "Total Itens": sum(item['Quantidade'] for item in dados_venda), "Total Gasto": total_bruto}])
+                ranking_df = pd.DataFrame([{"Apto/Local": apto, "Itens": sum(d['Quantidade'] for d in dados_venda), "Total": f"R$ {total_bruto:.2f}"}])
                 st.table(ranking_df)
                 
-                st.info("Nota: Para acumular as vendas de todos os dias em uma tabela única, precisaremos conectar ao Google Sheets.")
+                st.info("Nota: Para salvar o histórico de todos os dias e ver quem é o campeão de compras do mês, precisamos conectar ao Google Sheets.")
