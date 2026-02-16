@@ -147,15 +147,22 @@ elif st.session_state.etapa == "cardapio":
 
     st.title(f"Olá, {u['nome']} 🍦")
 
+    # -------- CUPONS --------
+    cupom = st.text_input("Possui cupom?").upper()
+    eh_morador = "MACHADORIBEIRO" in cupom
+    eh_garagem = "GARAGEMLOLA" in cupom
+    eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
+
     total = 0
     itens = []
+    precos_para_brinde = []
 
     for categoria, lista_produtos in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
             for produto in lista_produtos:
                 estoque = ESTOQUE.get(produto, 0)
 
-                # preços
+                # preços base
                 preco = 8.0
                 if "Gourmet" in categoria:
                     preco = 9.0
@@ -167,6 +174,10 @@ elif st.session_state.etapa == "cardapio":
                     preco = 18.0
                 if produto == "Crunch Cake":
                     preco = 10.0
+
+                # desconto morador
+                if eh_morador:
+                    preco -= 2
 
                 col1, col2, col3 = st.columns([3,1,1])
 
@@ -184,25 +195,46 @@ elif st.session_state.etapa == "cardapio":
                         if qtd:
                             total += qtd * preco
                             itens.append((produto, qtd))
+                            for _ in range(qtd):
+                                precos_para_brinde.append(preco)
                     else:
                         st.write("❌")
 
-    st.markdown(f"## Total: R$ {total:.2f}")
+    # -------- BRINDE ANIVERSÁRIO --------
+    if eh_niver and precos_para_brinde:
+        desconto = max(precos_para_brinde)
+        total -= desconto
+        st.success(f"🎂 NIVERDOCE aplicado! 1 item grátis (-R$ {desconto:.2f})")
 
+    st.markdown(f"## 💰 Total: R$ {total:.2f}")
+
+    # -------- PAGAMENTO --------
+    st.header("💳 Pagamento")
+
+    if eh_garagem:
+        forma_pgto = "Acerto na garagem"
+        st.info("Pagamento será acertado posteriormente na garagem.")
+    else:
+        forma_pgto = st.radio("Forma de pagamento:", ["PIX", "Dinheiro", "Cartão"])
+
+        if forma_pgto == "PIX":
+            st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+            st.info(f"📧 Envie o comprovante para: {EMAIL_COMPROVANTE}")
+
+    # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
         if not itens:
             st.warning("Escolha ao menos um item")
         else:
-            # salva vendas
             for produto, qtd in itens:
                 c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
                           (datetime.now().strftime("%d/%m %H:%M"),
-                           u["nome"], produto, qtd, total, "PIX"))
+                           u["nome"], produto, qtd, total, forma_pgto))
             conn.commit()
 
-            # mensagem WhatsApp
             lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
-            msg = f"🍦 Pedido de {u['nome']}\n📍 {u['end']}\n\n{lista_txt}\n\n💰 Total: R$ {total:.2f}"
+            msg = f"🍦 Pedido de {u['nome']}\n📍 {u['end']}\n💳 {forma_pgto}\n\n{lista_txt}\n\n💰 Total: R$ {total:.2f}"
+
             link = f"https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg)}"
 
             st.success("Pedido registrado!")
