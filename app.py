@@ -331,53 +331,71 @@ elif st.session_state.etapa == "cardapio":
             detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
             destinatario = NUMERO_JAQUE
 
-        # -------- PAGAMENTO --------
-    st.header("💳 Pagamento")
+       # -------- PAGAMENTO SEGURO --------
+st.header("💳 Pagamento")
 
-    opcoes_pagamento = ["PIX", "Dinheiro"]
+opcoes_pagamento = ["PIX", "Dinheiro"]
 
-    # GARAGEMLOLA adiciona opção extra
-    if eh_garagem:
-        opcoes_pagamento.append("Acertar na garagem")
+if eh_garagem:
+    opcoes_pagamento.append("Acertar na garagem")
 
-    forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
+forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
 
-    if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
-        st.info(f"📧 Envie o comprovante para: {EMAIL_COMPROVANTE}")
+comprovante = None
 
-    if forma_pgto == "Acertar na garagem":
-        st.info("Pagamento será acertado posteriormente na garagem.")
+if forma_pgto == "PIX":
+    st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+    comprovante = st.file_uploader(
+        "Envie o comprovante do PIX",
+        type=["png", "jpg", "jpeg", "pdf"]
+    )
 
-  # -------- FINALIZAR --------
-    if st.button("Finalizar Pedido", type="primary"):
-        if not itens:
-            st.warning("Escolha ao menos um item")
-        else:
-            for produto, qtd in itens:
-                categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+ # -------- FINALIZAR --------
+if st.button("Finalizar Pedido", type="primary"):
+    if not itens:
+        st.warning("Escolha ao menos um item")
+        st.stop()
 
-                c.execute("""
-                    INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom)
-                    VALUES (?,?,?,?,?,?,?)
-                """,
-                (datetime.now().strftime("%d/%m %H:%M"),
-                 u["email"], produto, categoria, qtd, total, cupom))
+    # 🔒 exige comprovante para PIX
+    if forma_pgto == "PIX" and comprovante is None:
+        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+        st.stop()
 
-            conn.commit()
+    # 💾 salva comprovante
+    caminho_comprovante = ""
+    if comprovante is not None:
+        caminho_comprovante = f"comprovantes/{comprovante.name}"
+        with open(caminho_comprovante, "wb") as f:
+            f.write(comprovante.getbuffer())
 
-            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+    # define status do pagamento
+    status_pagamento = "Pago" if forma_pgto == "PIX" else "Pendente"
 
-            msg = (
-                f"🍦 Pedido de {u['nome']}\n"
-                f"📍 {detalhe_entrega}\n"
-                f"💳 {forma_pgto}\n\n"
-                f"{lista_txt}\n\n"
-                f"💰 Total: R$ {total:.2f}\n\n"
-                f"📸 Envie o comprovante neste chat."
-            )
+    for produto, qtd in itens:
+        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+        c.execute("""
+            INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
+            VALUES (?,?,?,?,?,?,?,?)
+        """,
+        (datetime.now().strftime("%d/%m %H:%M"),
+         u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
 
-            st.success("Pedido registrado!")
-            st.link_button("Enviar no WhatsApp", link)
+    conn.commit()
+
+    lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+
+    msg = (
+        f"🍦 Pedido de {u['nome']}\n"
+        f"📍 {detalhe_entrega}\n"
+        f"💳 {forma_pgto}\n"
+        f"📦 Status: {status_pagamento}\n\n"
+        f"{lista_txt}\n\n"
+        f"💰 Total: R$ {total:.2f}\n\n"
+        f"📸 Comprovante enviado pelo app."
+    )
+
+    link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+    st.success("Pedido registrado com segurança!")
+    st.link_button("Enviar pedido no WhatsApp", link)
