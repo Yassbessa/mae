@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS vendas (
 
 conn.commit()
 
+# garante coluna status_pagamento
+try:
+    c.execute("ALTER TABLE vendas ADD COLUMN status_pagamento TEXT")
+except:
+    pass
+
+conn.commit()
+
+
 # ================= SESSION =================
 if "etapa" not in st.session_state:
     st.session_state.etapa = "boas_vindas"
