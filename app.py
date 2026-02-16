@@ -16,7 +16,7 @@ ADMIN_PASS = os.getenv("ADMIN_PASS")
 
 NUMERO_YASMIN = os.getenv("NUMERO_YASMIN")
 NUMERO_JAQUE = os.getenv("NUMERO_JAQUE")
-CHAVE_PIX = os.getenv("CHAVE_PIX") or st.secrets.get("CHAVE_PIX")
+CHAVE_PIX = "30.615.725 000155"
 
 CUPOM_MORADOR = os.getenv("CUPOM_MORADOR")
 CUPOM_GARAGEM = os.getenv("CUPOM_GARAGEM")
@@ -510,7 +510,7 @@ elif st.session_state.etapa == "cardapio":
     comprovante = None
 
     if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+        st.success(f"🔑 Chave PIX: 30.615.725 000155")
         comprovante = st.file_uploader(
             "Envie o comprovante do PIX",
             type=["png", "jpg", "jpeg", "pdf"]
