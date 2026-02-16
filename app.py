@@ -499,99 +499,95 @@ elif st.session_state.etapa == "cardapio":
             type=["png", "jpg", "jpeg", "pdf"]
         )
 
-# -------- FINALIZAR --------
-if st.button("Finalizar Pedido", type="primary"):
-    if not itens:
-        st.warning("Escolha ao menos um item")
-        st.stop()
+    # -------- FINALIZAR --------
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+            st.stop()
 
-    # 🔒 exige comprovante para PIX
-    if forma_pgto == "PIX" and comprovante is None:
-        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
-        st.stop()
+        # 🔒 exige comprovante para PIX
+        if forma_pgto == "PIX" and comprovante is None:
+            st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+            st.stop()
 
-    # 💾 salva comprovante
-    caminho_comprovante = ""
-    if comprovante is not None:
-        pasta = "comprovantes"
-        os.makedirs(pasta, exist_ok=True)
+        # 💾 salva comprovante
+        caminho_comprovante = ""
+        if comprovante is not None:
+            pasta = "comprovantes"
+            os.makedirs(pasta, exist_ok=True)
 
-        caminho_comprovante = os.path.join(pasta, comprovante.name)
+            caminho_comprovante = os.path.join(pasta, comprovante.name)
 
-        with open(caminho_comprovante, "wb") as f:
-            f.write(comprovante.getbuffer())
+            with open(caminho_comprovante, "wb") as f:
+                f.write(comprovante.getbuffer())
 
-       # ===== STATUS DO PAGAMENTO =====
-    status_pagamento = "Pendente"
-    valor_pdf = None
+        # ===== STATUS DO PAGAMENTO =====
+        status_pagamento = "Pendente"
 
-    # 🔎 Se enviou PDF, tenta validar valor
-    if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
-        valor_pdf = extrair_dados_pix(caminho_comprovante)
+        if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
+            valor_pdf = extrair_dados_pix(caminho_comprovante)
 
-        if valor_pdf:
-            try:
-                valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
-                
-                if abs(valor_pdf_float - total) < 0.01:
-                    status_pagamento = "Pago Confirmado"
-                else:
-                    status_pagamento = "⚠️ Valor Divergente"
-            except:
-                status_pagamento = "Erro ao ler valor"
-        else:
-            status_pagamento = "Valor não encontrado"
+            if valor_pdf:
+                try:
+                    valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
+                    if abs(valor_pdf_float - total) < 0.01:
+                        status_pagamento = "Pago Confirmado"
+                    else:
+                        status_pagamento = "⚠️ Valor Divergente"
+                except:
+                    status_pagamento = "Erro ao ler valor"
+            else:
+                status_pagamento = "Valor não encontrado"
 
-    elif forma_pgto == "PIX":
-        status_pagamento = "Comprovante enviado"
+        elif forma_pgto == "PIX":
+            status_pagamento = "Comprovante enviado"
 
-    elif forma_pgto == "Dinheiro":
-        status_pagamento = "Pagamento na entrega"
+        elif forma_pgto == "Dinheiro":
+            status_pagamento = "Pagamento na entrega"
 
-    # ===== SALVA NO BANCO (UMA ÚNICA VEZ) =====
-    for produto, qtd in itens:
-        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+        # ===== SALVA NO BANCO =====
+        for produto, qtd in itens:
+            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-        c.execute("""
-            INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
-            VALUES (?,?,?,?,?,?,?,?)
-        """,
-        (
-            datetime.now().strftime("%d/%m %H:%M"),
-            u["email"],
-            produto,
-            categoria,
-            qtd,
-            total,
-            cupom,
-            status_pagamento
-        ))
+            c.execute("""
+                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
+                VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (
+                datetime.now().strftime("%d/%m %H:%M"),
+                u["email"],
+                produto,
+                categoria,
+                qtd,
+                total,
+                cupom,
+                status_pagamento
+            ))
 
-    conn.commit()
+        conn.commit()
 
-       # -------- MENSAGEM WHATSAPP --------
-nome = u["nome"]
+        # ===== MENSAGEM WHATSAPP =====
+        nome = u["nome"]
 
-msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
 
-for produto, qtd in itens:
-    msg += f"▪️ {qtd}x {produto}\n"
+        for produto, qtd in itens:
+            msg += f"▪️ {qtd}x {produto}\n"
 
-msg += (
-    f"\n Entrega: {detalhe_entrega}"
-    f"\n Pagamento: {forma_pgto}"
-    f"\n Status: {status_pagamento}"
-    f"\n\n*Total: R$ {total:.2f}*"
-)
+        msg += (
+            f"\n Entrega: {detalhe_entrega}"
+            f"\n Pagamento: {forma_pgto}"
+            f"\n Status: {status_pagamento}"
+            f"\n\n*Total: R$ {total:.2f}*"
+        )
 
-# instruções extras se for PIX
-if forma_pgto == "PIX":
-    msg += (
-        "\n\n Enviei o comprovante pelo app."
-        "\nSe não aparecer para você, posso reenviar por aqui."
-    )
+        if forma_pgto == "PIX":
+            msg += (
+                "\n\n Enviei o comprovante pelo app."
+                "\nSe não aparecer para você, posso reenviar por aqui."
+            )
 
-link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
-st.success("Pedido registrado com segurança!")
-st.link_button("Enviar pedido no WhatsApp", link)
+        st.success("Pedido registrado com segurança!")
+        st.link_button("Enviar pedido no WhatsApp", link)
