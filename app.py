@@ -27,7 +27,7 @@ PRODUTOS = {
 
 # ================= ESTOQUE =================
 ESTOQUE = {
-    "Goiaba": , "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
+    "Goiaba": 5, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
     "Abacaxi c/ Hortelã": 1, "Frutopia": 3,
     "Ninho c/ Nutella": 5, "Ninho c/ Morango": 4, "Chicabon": 4,
     "Mousse de Maracujá": 3, "Pudim de Leite": 5,
