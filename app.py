@@ -136,6 +136,24 @@ elif st.session_state.etapa == "login":
     if st.button("Voltar"):
         st.session_state.etapa = "boas_vindas"
         st.rerun()
+        
+# ================= ADMIN =================
+elif st.session_state.etapa == "admin":
+    st.title("Painel Admin 🐝")
+
+    if st.button("Sair do admin"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+    st.subheader("📦 Estoque atual")
+
+    for produto, qtd in ESTOQUE.items():
+        st.write(f"{produto}: {qtd}")
+
+    st.subheader("📊 Vendas registradas")
+
+    df = pd.read_sql_query("SELECT * FROM vendas", conn)
+    st.dataframe(df)
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
