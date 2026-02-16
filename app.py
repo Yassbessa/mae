@@ -561,30 +561,30 @@ if st.button("Finalizar Pedido", type="primary"):
 
     conn.commit()
 
+        
        # -------- MENSAGEM WHATSAPP --------
-        
-        nome = u["nome"]
+nome = u["nome"]
 
-        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
-        
-        for produto, qtd in itens:
-            msg += f"▪️ {qtd}x {produto}\n"
-        
-        msg += (
-            f"\n Entrega: {detalhe_entrega}"
-            f"\nPagamento: {forma_pgto}"
-            f"\n Status: {status_pagamento}"
-            f"\n\n*Total: R$ {total:.2f}*"
-        )
-        
-        # 🔒 instruções extras para PIX
-        if forma_pgto == "PIX":
-            msg += (
-                "\n\n O comprovante foi enviado pelo app."
-                "\nSe não aparecer para você, posso reenviar por aqui."
-            )
-        
-        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
-        
-        st.success("Pedido registrado com segurança!")
-        st.link_button("Enviar pedido no WhatsApp", link)
+msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+
+for produto, qtd in itens:
+    msg += f"▪️ {qtd}x {produto}\n"
+
+msg += (
+    f"\n Entrega: {detalhe_entrega}"
+    f"\n Pagamento: {forma_pgto}"
+    f"\n Status: {status_pagamento}"
+    f"\n\n*Total: R$ {total:.2f}*"
+)
+
+# instruções extras se for PIX
+if forma_pgto == "PIX":
+    msg += (
+        "\n\n Enviei o comprovante pelo app."
+        "\nSe não aparecer para você, posso reenviar por aqui."
+    )
+
+link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+st.success("Pedido registrado com segurança!")
+st.link_button("Enviar pedido no WhatsApp", link)
