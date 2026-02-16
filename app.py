@@ -463,43 +463,38 @@ elif st.session_state.etapa == "cardapio":
 
     st.markdown(f"## 💰 Total: R$ {total:.2f}")
 
-    # -------- ENTREGA --------
+        # -------- ENTREGA --------
+    st.header("🚚 Entrega")
 
-with st.expander("Confirmar dados de entrega", expanded=True):
+    with st.expander("Confirmar dados de entrega", expanded=True):
 
-    nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
+        nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
 
-    # 🔹 interface única para todos
-    modo_entrega = st.radio(
-        "Como prefere receber?",
-        ["Entregar agora", "Agendar entrega", "Retirar no local"]
-    )
+        # interface única para todos
+        modo_entrega = st.radio(
+            "Como prefere receber?",
+            ["Entregar agora", "Agendar entrega", "Retirar no local"]
+        )
 
-    horario_agendado = ""
-    if modo_entrega == "Agendar entrega":
-        horario_agendado = st.text_input("Horário desejado")
+        horario_agendado = ""
+        if modo_entrega == "Agendar entrega":
+            horario_agendado = st.text_input("Horário desejado")
 
-    # 🔹 dados específicos por tipo de cliente
-    if eh_morador:
-        apto = st.text_input("Apartamento", value=u["end"])
-        detalhe_entrega = f"Apto {apto} | {modo_entrega}"
-        destinatario = NUMERO_YASMIN
-    else:
-        endereco = st.text_input("Endereço", value=u["end"])
-        quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
-        instrucoes = st.text_area("Instruções", value=u["inst"])
+        # dados específicos por tipo de cliente
+        if eh_morador:
+            apto = st.text_input("Apartamento", value=u["end"])
+            detalhe_entrega = f"Apto {apto} | {modo_entrega}"
+            destinatario = NUMERO_YASMIN
+        else:
+            endereco = st.text_input("Endereço", value=u["end"])
+            quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
+            instrucoes = st.text_area("Instruções", value=u["inst"])
 
-        detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes} | {modo_entrega}"
-        destinatario = NUMERO_JAQUE
+            detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes} | {modo_entrega}"
+            destinatario = NUMERO_JAQUE
 
-    # 🔹 adiciona horário se houver
-    if horario_agendado:
-        detalhe_entrega += f" às {horario_agendado}"
-
-
-   
-
-
+        if horario_agendado:
+            detalhe_entrega += f" às {horario_agendado}"
 
 
            # -------- PAGAMENTO SEGURO --------
