@@ -510,7 +510,7 @@ elif st.session_state.etapa == "cardapio":
     comprovante = None
 
     if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: {os.getenv("CHAVE_PIX")}")
+        st.success(f"🔑 Chave PIX: {"CHAVE_PIX")
         comprovante = st.file_uploader(
             "Envie o comprovante do PIX",
             type=["png", "jpg", "jpeg", "pdf"]
