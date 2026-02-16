@@ -23,9 +23,7 @@ if 'etapa' not in st.session_state:
 if 'user' not in st.session_state:
     st.session_state.user = None
 
-# =========================================================
-# PRODUTOS FIXOS
-# =========================================================
+# ================= PRODUTOS =================
 PRODUTOS = {
     "❄️ Frutas (Sem Lactose)": ["Goiaba", "Uva", "Maracujá", "Manga", "Morango", "Abacaxi c/ Hortelã", "Frutopia"],
     "🍦 Gourmet (Cremosos)": ["Ninho c/ Nutella", "Ninho c/ Morango", "Chicabon", "Mousse de Maracujá",
@@ -35,9 +33,7 @@ PRODUTOS = {
     "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G", "Crunch Cake"]
 }
 
-# =========================================================
-# ESTOQUE
-# =========================================================
+# ================= ESTOQUE =================
 ESTOQUE = {
     "Goiaba": 4, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
     "Abacaxi c/ Hortelã": 1, "Frutopia": 3,
@@ -46,12 +42,12 @@ ESTOQUE = {
     "Açaí Cremoso": 4, "Coco Cremoso": 6,
     "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
     "Batida de Maracujá": 2, "Batida de Morango": 1,
-    "Empadão Frango P": 5, "Empadão Frango G": 5, "Crunch Cake": 4
+    "Empadão Frango P": 5,
+    "Empadão Frango G": 5,
+    "Crunch Cake": 4
 }
 
-# =========================================================
-# FOTOS
-# =========================================================
+# ================= FOTOS =================
 FOTOS = {
     "Goiaba": "", "Uva": "", "Maracujá": "", "Manga": "", "Morango": "",
     "Abacaxi c/ Hortelã": "", "Frutopia": "",
@@ -61,13 +57,11 @@ FOTOS = {
     "Piña Colada": "", "Sex on the Beach": "", "Caipirinha": "",
     "Batida de Maracujá": "", "Batida de Morango": "",
     "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
-    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
+    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
     "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
 }
 
-# =========================================================
-# FUNÇÃO DE PREÇO
-# =========================================================
+# ================= PREÇOS =================
 def definir_preco(item, categoria, eh_morador):
     if "Frutas" in categoria:
         return 5 if eh_morador else 8
@@ -82,10 +76,7 @@ def definir_preco(item, categoria, eh_morador):
     if item == "Crunch Cake":
         return 10
 
-# =========================================================
-# TELAS
-# =========================================================
-
+# ================= TELAS =================
 if st.session_state.etapa == "boas_vindas":
     st.markdown("<h1 style='text-align:center;color:#E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
     if st.button("Entrar"): st.session_state.etapa = "login"; st.rerun()
@@ -114,7 +105,6 @@ elif st.session_state.etapa == "cardapio":
     itens = []
     precos = []
 
-    # ====== CARDÁPIO BONITO ======
     for categoria, lista in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
             for item in lista:
@@ -139,8 +129,9 @@ elif st.session_state.etapa == "cardapio":
                             itens.append(f"{q}x {item}")
                             precos.append(preco)
 
+                            # FOTO aparece somente após selecionar
                             if foto:
-                                st.image(foto, width=110)
+                                st.image(foto, width=120)
                     else:
                         st.write("❌")
 
