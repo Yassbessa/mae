@@ -424,9 +424,9 @@ elif st.session_state.etapa == "cardapio":
             msg += f"▪️ {qtd}x {produto}\n"
         
         msg += (
-            f"\n📍 Entrega: {detalhe_entrega}"
-            f"\n💳 Pagamento: {forma_pgto}"
-            f"\n📦 Status: {status_pagamento}"
+            f"\n Entrega: {detalhe_entrega}"
+            f"\nPagamento: {forma_pgto}"
+            f"\n Status: {status_pagamento}"
             f"\n\n*Total: R$ {total:.2f}*"
         )
         
