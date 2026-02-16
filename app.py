@@ -1,11 +1,14 @@
 import streamlit as st
 import sqlite3
 import urllib.parse
+import os
+import re
+import pdfplumber
 from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
-import os
 
+# ========= ENV ==================
 load_dotenv()
 
 ADMIN_USER = os.getenv("ADMIN_USER")
@@ -17,6 +20,26 @@ CHAVE_PIX = os.getenv("CHAVE_PIX")
 
 CUPOM_MORADOR = os.getenv("CUPOM_MORADOR")
 CUPOM_GARAGEM = os.getenv("CUPOM_GARAGEM")
+
+# =========== LER PIX =====================
+
+def extrair_dados_pix(caminho_pdf):
+    texto = ""
+
+    with pdfplumber.open(caminho_pdf) as pdf:
+        for pagina in pdf.pages:
+            conteudo = pagina.extract_text()
+            if conteudo:
+                texto += conteudo + "\n"
+
+    # extrai valor em formato R$ 10,00 ou R$10.00
+    valor = None
+    match_valor = re.search(r"R\$\s?([\d\.,]+)", texto)
+
+    if match_valor:
+        valor = match_valor.group(1)
+
+    return valor
 
 # ================= CONFIG =================
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
@@ -186,70 +209,166 @@ elif st.session_state.etapa == "painel_admin":
         st.session_state.etapa = "boas_vindas"
         st.rerun()
 
-    # ----- DADOS -----
+    # ===== CARREGA DADOS =====
     df_vendas = pd.read_sql_query("SELECT * FROM vendas", conn)
-    df_users = pd.read_sql_query("SELECT nome, email, endereco, tipo_cliente FROM usuarios", conn)
+    df_users = pd.read_sql_query(
+        "SELECT nome, email, endereco, tipo_cliente, nascimento FROM usuarios", conn
+    )
 
-    if not df_vendas.empty:
+    if df_vendas.empty:
+        st.info("Ainda não temos vendas registradas.")
+        st.stop()
 
-        # 🔗 Junta vendas com usuários
-        df = df_vendas.merge(df_users, left_on="cliente_email", right_on="email", how="left")
+    # Junta vendas com usuários
+    df = df_vendas.merge(df_users, left_on="cliente_email", right_on="email", how="left")
 
-        # --- 1. PERFIL DE VENDAS ---
-        st.subheader("👥 Perfil de Vendas")
+    # Cria coluna mês
+    df["mes"] = df["data"].str[3:5]
 
-        col1, col2 = st.columns(2)
+    # ===== SEPARAÇÃO DE PÚBLICO =====
+    df_moradores = df[df["tipo_cliente"] == "Morador"]
+    df_externos = df[df["tipo_cliente"] == "Externo"]
 
-        vendas_morador = df[df["tipo_cliente"] == "Morador"]["total"].sum()
-        vendas_externo = df[df["tipo_cliente"] == "Externo"]["total"].sum()
+    tab_moradores, tab_externos, tab_geral = st.tabs(
+        ["🏢 Machado Ribeiro", "🐝 Clientes JQD", "📊 Visão Geral"]
+    )
+    
+    # _____________________🏢 MORADORES_______________________
+    with tab_moradores:
+        st.subheader("🏢 Moradores do Machado Ribeiro")
 
-        col1.metric("Faturamento Moradores", f"R$ {vendas_morador:.2f}")
-        col2.metric("Faturamento Externos", f"R$ {vendas_externo:.2f}")
+        faturamento = df_moradores["total"].sum()
+        st.metric("💰 Faturamento Total", f"R$ {faturamento:.2f}")
 
-        st.divider()
-
-        # --- 2. RANKING DE PRODUTOS ---
+        # Ranking
         st.subheader("🏆 Sabores Campeões")
-
-        ranking = df.groupby("item")["qtd"].sum().sort_values(ascending=False)
+        ranking = df_moradores.groupby("item")["qtd"].sum().sort_values(ascending=False)
         st.bar_chart(ranking)
 
-        st.divider()
+        # Gasto por apto / cliente
+        st.subheader("💰 Gasto por cliente")
+        gasto_cliente = df_moradores.groupby("nome")["total"].sum().sort_values(ascending=False)
+        st.dataframe(gasto_cliente)
 
-        # --- 3. RADAR DE MARKETING ---
-        st.subheader("🎯 Radar de Marketing")
+        # Comportamento mensal
+        st.subheader("📅 Comportamento mensal")
+        mensal = df_moradores.groupby(["nome", "mes"])["total"].sum().reset_index()
+        st.dataframe(mensal)
 
-        preferencia = (
-            df.groupby(["cliente_email", "nome", "item"])["qtd"]
-            .sum()
-            .reset_index()
+        # 🎂 Aniversariantes
+        st.subheader("🎂 Aniversariantes do mês")
+        mes_atual = datetime.now().strftime("%m")
+
+        aniversariantes = df_users[
+            (df_users["tipo_cliente"] == "Morador") &
+            (df_users["nascimento"].str[3:5] == mes_atual)
+        ]
+
+        if not aniversariantes.empty:
+            for _, row in aniversariantes.iterrows():
+                nome = row["nome"]
+                data = row["nascimento"]
+
+                total_cliente = df_moradores[df_moradores["nome"] == nome]["total"].sum()
+
+                st.success(f"🎉 {nome} faz aniversário em {data}")
+                st.write(f"💰 Total gasto: R$ {total_cliente:.2f}")
+
+                msg = (
+                    f"Olá {nome}! 🎉\n"
+                    "Seu aniversário está chegando e queremos comemorar com você! 🎂\n"
+                    "Use o cupom *NIVERDOCE* e ganhe um sacolé à sua escolha grátis 🍦\n"
+                    "Esperamos você! 💛"
+                )
+                st.code(msg)
+        else:
+            st.info("Nenhum aniversariante este mês.")
+
+    # _____________🐝 CLIENTES EXTERNOS_________________________
+    
+    with tab_externos:
+        st.subheader("🐝 Clientes JQD")
+
+        faturamento = df_externos["total"].sum()
+        st.metric("💰 Faturamento Total", f"R$ {faturamento:.2f}")
+
+        # Ranking
+        st.subheader("🏆 Sabores Campeões")
+        ranking = df_externos.groupby("item")["qtd"].sum().sort_values(ascending=False)
+        st.bar_chart(ranking)
+
+        # Gasto por cliente
+        st.subheader("💰 Gasto por cliente")
+        gasto_cliente = df_externos.groupby("nome")["total"].sum().sort_values(ascending=False)
+        st.dataframe(gasto_cliente)
+
+        # Comportamento mensal
+        st.subheader("📅 Comportamento mensal")
+        mensal = df_externos.groupby(["nome", "mes"])["total"].sum().reset_index()
+        st.dataframe(mensal)
+
+        # 🎂 Aniversariantes
+        st.subheader("🎂 Aniversariantes do mês")
+
+        aniversariantes = df_users[
+            (df_users["tipo_cliente"] == "Externo") &
+            (df_users["nascimento"].str[3:5] == mes_atual)
+        ]
+
+        if not aniversariantes.empty:
+            for _, row in aniversariantes.iterrows():
+                nome = row["nome"]
+                data = row["nascimento"]
+
+                total_cliente = df_externos[df_externos["nome"] == nome]["total"].sum()
+
+                st.success(f"🎉 {nome} faz aniversário em {data}")
+                st.write(f"💰 Total gasto: R$ {total_cliente:.2f}")
+                
+                msg = (
+                    f"Olá {nome}! 🎉\n"
+                    "Seu aniversário está chegando e queremos comemorar com você! 🎂\n"
+                    "Use o cupom *NIVERDOCE* e ganhe um sacolé à sua escolha grátis 🍦\n"
+                    "Esperamos você! 💛"
+                )
+                st.code(msg)
+        else:
+            st.info("Nenhum aniversariante este mês.")
+
+
+    # 📊 VISÃO GERAL
+    with tab_geral:
+        st.subheader("📊 Visão Geral")
+
+        col1, col2 = st.columns(2)
+        col1.metric("Moradores", f"R$ {df_moradores['total'].sum():.2f}")
+        col2.metric("Externos", f"R$ {df_externos['total'].sum():.2f}")
+
+        # Exportação mensal
+        st.subheader("📥 Exportar relatório mensal")
+        meses = sorted(df["mes"].unique())
+        mes_escolhido = st.selectbox("Escolha o mês", meses)
+
+        df_mes = df[df["mes"] == mes_escolhido]
+
+        st.download_button(
+            "📄 Baixar planilha do mês",
+            df_mes.to_csv(index=False),
+            file_name=f"relatorio_mes_{mes_escolhido}.csv",
+            mime="text/csv"
         )
 
-        top = preferencia.sort_values("qtd", ascending=False).drop_duplicates("cliente_email")
+        # Tabelas completas
+        st.subheader("📊 Histórico completo")
+        st.dataframe(df)
 
-        for _, row in top.iterrows():
-            nome_cliente = row["nome"]
-            favorito = row["item"]
-
-            frase = f"Olá {nome_cliente.split()[0]}, percebemos que você adorou nosso {favorito}! 😍"
-
-            with st.expander(f"👤 {nome_cliente}"):
-                st.write(f"💖 Favorito: {favorito}")
-                st.code(frase)
-
-        st.divider()
-
-        # --- 4. TABELAS DETALHADAS ---
-        tab1, tab2 = st.tabs(["📊 Histórico de Vendas", "👥 Usuários"])
-
-        with tab1:
-            st.dataframe(df_vendas, use_container_width=True)
-
-        with tab2:
-            st.dataframe(df_users, use_container_width=True)
-
-    else:
-        st.info("Ainda não temos vendas registo.")
+        # 🧹 Excluir vendas de teste
+        st.subheader("🧹 Limpar vendas de teste")
+        if st.button("Excluir vendas com cliente vazio"):
+            c.execute("DELETE FROM vendas WHERE cliente_email IS NULL")
+            conn.commit()
+            st.success("Vendas de teste removidas!")
+            st.rerun()
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
@@ -380,46 +499,67 @@ elif st.session_state.etapa == "cardapio":
             type=["png", "jpg", "jpeg", "pdf"]
         )
 
-    # -------- FINALIZAR --------
-    if st.button("Finalizar Pedido", type="primary"):
-        if not itens:
-            st.warning("Escolha ao menos um item")
-            st.stop()
+# -------- FINALIZAR --------
+if st.button("Finalizar Pedido", type="primary"):
+    if not itens:
+        st.warning("Escolha ao menos um item")
+        st.stop()
 
-        # 🔒 exige comprovante para PIX
-        if forma_pgto == "PIX" and comprovante is None:
-            st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
-            st.stop()
+    # 🔒 exige comprovante para PIX
+    if forma_pgto == "PIX" and comprovante is None:
+        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+        st.stop()
 
-        # 💾 salva comprovante
-        import os
+    # 💾 salva comprovante
+    caminho_comprovante = ""
+    if comprovante is not None:
+        pasta = "comprovantes"
+        os.makedirs(pasta, exist_ok=True)
 
-        caminho_comprovante = ""
-        if comprovante is not None:
-            pasta = "comprovantes"
-            os.makedirs(pasta, exist_ok=True)
+        caminho_comprovante = os.path.join(pasta, comprovante.name)
 
-            caminho_comprovante = os.path.join(pasta, comprovante.name)
+        with open(caminho_comprovante, "wb") as f:
+            f.write(comprovante.getbuffer())
 
-            with open(caminho_comprovante, "wb") as f:
-                f.write(comprovante.getbuffer())
+    # ===== STATUS DO PAGAMENTO =====
+    status_pagamento = "Pendente"
+    valor_pdf = None
 
-        # define status do pagamento
-        status_pagamento = "Pago" if forma_pgto == "PIX" else "Pendente"
+    # 🔎 Se enviou PDF, tenta validar valor
+    if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
+        valor_pdf = extrair_dados_pix(caminho_comprovante)
 
-        for produto, qtd in itens:
-            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+        if valor_pdf:
+            try:
+                valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
+                
+                if abs(valor_pdf_float - total) < 0.01:
+                    status_pagamento = "Pago Confirmado"
+                else:
+                    status_pagamento = "⚠️ Valor Divergente"
+            except:
+                status_pagamento = "Erro ao ler valor"
+        else:
+            status_pagamento = "Valor não encontrado"
 
-            c.execute("""
-                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
-                VALUES (?,?,?,?,?,?,?,?)
-            """,
-            (datetime.now().strftime("%d/%m %H:%M"),
-             u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
+    elif forma_pgto == "PIX":
+        status_pagamento = "Comprovante enviado"
 
-        conn.commit()
+    elif forma_pgto == "Dinheiro":
+        status_pagamento = "Pagamento na entrega"
 
-        lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+    # ===== SALVA NO BANCO =====
+    for produto, qtd in itens:
+        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+
+        c.execute("""
+            INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
+            VALUES (?,?,?,?,?,?,?,?)
+        """,
+        (datetime.now().strftime("%d/%m %H:%M"),
+         u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
+
+    conn.commit()
 
        # -------- MENSAGEM WHATSAPP --------
         nome = u["nome"]
