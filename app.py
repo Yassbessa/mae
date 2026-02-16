@@ -415,16 +415,29 @@ elif st.session_state.etapa == "cardapio":
 
         lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
 
-        msg = (
-            f"🍦 Pedido de {u['nome']}\n"
-            f"📍 {detalhe_entrega}\n"
-            f"💳 {forma_pgto}\n\n"
-            f"{lista_txt}\n\n"
-            f"💰 Total: R$ {total:.2f}\n\n"
-            f"📎 Comprovante disponível no sistema."
+       # -------- MENSAGEM WHATSAPP --------
+        nome = u["nome"]
+        
+        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+        
+        for produto, qtd in itens:
+            msg += f"▪️ {qtd}x {produto}\n"
+        
+        msg += (
+            f"\n📍 Entrega: {detalhe_entrega}"
+            f"\n💳 Pagamento: {forma_pgto}"
+            f"\n📦 Status: {status_pagamento}"
+            f"\n\n*Total: R$ {total:.2f}*"
         )
-
+        
+        # 🔒 instruções extras para PIX
+        if forma_pgto == "PIX":
+            msg += (
+                "\n\n📸 O comprovante foi enviado pelo app."
+                "\nSe não aparecer para você, posso reenviar por aqui."
+            )
+        
         link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
-
+        
         st.success("Pedido registrado com segurança!")
         st.link_button("Enviar pedido no WhatsApp", link)
