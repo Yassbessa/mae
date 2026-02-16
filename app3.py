@@ -263,28 +263,59 @@ elif st.session_state.etapa == "cardapio":
     if forma_pgto == "Acertar na garagem":
         st.info("Pagamento será acertado posteriormente na garagem.")
 
-    # -------- FINALIZAR --------
-    if st.button("Finalizar Pedido", type="primary"):
-        if not itens:
-            st.warning("Escolha ao menos um item")
-        else:
-            for produto, qtd in itens:
-                c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
-                          (datetime.now().strftime("%d/%m %H:%M"),
-                           u["nome"], produto, qtd, total, forma_pgto))
-            conn.commit()
+ # -------- FINALIZAR --------
+if st.button("Finalizar Pedido", type="primary"):
+    if not itens:
+        st.warning("Escolha ao menos um item")
+    else:
+        alertas_estoque = []
 
-            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+        for produto, qtd in itens:
+            # registra venda
+            c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
+                      (datetime.now().strftime("%d/%m %H:%M"),
+                       u["nome"], produto, qtd, total, forma_pgto))
 
-            msg = (
-                f"🍦 Pedido de {u['nome']}\n"
-                f"📍 {detalhe_entrega}\n"
-                f"💳 {forma_pgto}\n\n"
-                f"{lista_txt}\n\n"
-                f"💰 Total: R$ {total:.2f}"
+            # 🔻 reduz estoque
+            if produto in ESTOQUE:
+                ESTOQUE[produto] -= qtd
+                if ESTOQUE[produto] < 0:
+                    ESTOQUE[produto] = 0
+
+                # ⚠️ alerta se acabou ou restou 1
+                if ESTOQUE[produto] <= 1:
+                    alertas_estoque.append(produto)
+
+        conn.commit()
+
+        # -------- ENVIO DO PEDIDO --------
+        lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+
+        msg = (
+            f"🍦 Pedido de {u['nome']}\n"
+            f"📍 {detalhe_entrega}\n"
+            f"💳 {forma_pgto}\n\n"
+            f"{lista_txt}\n\n"
+            f"💰 Total: R$ {total:.2f}"
+        )
+
+        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+        st.success("Pedido registrado!")
+        st.link_button("Enviar no WhatsApp", link)
+
+        # -------- ALERTA ESTOQUE --------
+        if alertas_estoque:
+            itens_alerta = ", ".join(alertas_estoque)
+
+            msg_alerta = (
+                f"Olá Jaque! ⚠️\n\n"
+                f"Acabando ou último item de:\n"
+                f"{itens_alerta}\n\n"
+                f"Verificar reposição."
             )
 
-            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+            link_alerta = f"https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg_alerta)}"
 
-            st.success("Pedido registrado!")
-            st.link_button("Enviar no WhatsApp", link)
+            st.warning("⚠️ Alguns itens estão acabando!")
+            st.link_button("Avisar Jaqueline", link_alerta)
