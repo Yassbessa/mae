@@ -493,7 +493,7 @@ elif st.session_state.etapa == "cardapio":
     comprovante = None
 
     if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+        st.success(f"🔑 Chave PIX: {os.getenv("CHAVE_PIX")}")
         comprovante = st.file_uploader(
             "Envie o comprovante do PIX",
             type=["png", "jpg", "jpeg", "pdf"]
@@ -521,7 +521,7 @@ if st.button("Finalizar Pedido", type="primary"):
         with open(caminho_comprovante, "wb") as f:
             f.write(comprovante.getbuffer())
 
-    # ===== STATUS DO PAGAMENTO =====
+       # ===== STATUS DO PAGAMENTO =====
     status_pagamento = "Pendente"
     valor_pdf = None
 
@@ -548,7 +548,7 @@ if st.button("Finalizar Pedido", type="primary"):
     elif forma_pgto == "Dinheiro":
         status_pagamento = "Pagamento na entrega"
 
-    # ===== SALVA NO BANCO =====
+    # ===== SALVA NO BANCO (UMA ÚNICA VEZ) =====
     for produto, qtd in itens:
         categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
@@ -556,12 +556,19 @@ if st.button("Finalizar Pedido", type="primary"):
             INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
             VALUES (?,?,?,?,?,?,?,?)
         """,
-        (datetime.now().strftime("%d/%m %H:%M"),
-         u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
+        (
+            datetime.now().strftime("%d/%m %H:%M"),
+            u["email"],
+            produto,
+            categoria,
+            qtd,
+            total,
+            cupom,
+            status_pagamento
+        ))
 
     conn.commit()
 
-        
        # -------- MENSAGEM WHATSAPP --------
 nome = u["nome"]
 
