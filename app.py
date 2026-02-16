@@ -70,21 +70,21 @@ ESTOQUE = {
 }
 
 # ================= ALERTAS DE ESTOQUE =================
-st.subheader("📦 Status do Estoque")
-
-produtos_esgotados = {p: q for p, q in ESTOQUE.items() if q == 0}
-produtos_criticos = {p: q for p, q in ESTOQUE.items() if q == 1}
-
-if produtos_esgotados:
-    st.error("❌ Produtos esgotados")
-    st.write(produtos_esgotados)
-
-if produtos_criticos:
-    st.warning("⚠️ Última unidade em estoque")
-    st.write(produtos_criticos)
-
-if not produtos_esgotados and not produtos_criticos:
-    st.success("✅ Estoque saudável")
+    st.subheader("📦 Status do Estoque")
+    
+    produtos_esgotados = {p: q for p, q in ESTOQUE.items() if q == 0}
+    produtos_criticos = {p: q for p, q in ESTOQUE.items() if q == 1}
+    
+    if produtos_esgotados:
+        st.error("❌ Produtos esgotados")
+        st.write(produtos_esgotados)
+    
+    if produtos_criticos:
+        st.warning("⚠️ Última unidade em estoque")
+        st.write(produtos_criticos)
+    
+    if not produtos_esgotados and not produtos_criticos:
+        st.success("✅ Estoque saudável")
 
 
 # ================= FOTOS =================
