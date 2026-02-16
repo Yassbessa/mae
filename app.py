@@ -275,7 +275,7 @@ precos_para_brinde = []
          # -------- PREÇOS --------
 
     # preços por categoria
-    PRECOS = {
+        PRECOS = {
         "❄️ Frutas (Sem Lactose)": {"normal": 8.0, "morador": 5.0},
         "🍦 Gourmet (Cremosos)": {"normal": 9.0, "morador": 7.0},
         "🍹 Alcoólicos (+18)": {"normal": 10.0, "morador": 9.0},
