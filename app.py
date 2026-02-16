@@ -1,181 +1,290 @@
 import streamlit as st
+import sqlite3
 import urllib.parse
+from datetime import datetime
 import pandas as pd
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# ================= CONFIG =================
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
 
-# --- DADOS DO NEGÓCIO ---
-NUMERO_YASMIN = "5521981816105" 
-NUMERO_JAQUE = "5521976141210" 
-CHAVE_PIX = "30.615.725 000155" 
+NUMERO_YASMIN = "5521981816105"
+NUMERO_JAQUE = "5521976141210"
+CHAVE_PIX = "30.615.725 000155"
 EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
 
-# --- CONTROLE DE NAVEGAÇÃO ---
-if 'abriu_cardapio' not in st.session_state:
-    st.session_state.abriu_cardapio = False
+ADMIN_USER = "admin"
+ADMIN_PASS = "jqd9191"
 
-# --- TELA 1: BOAS-VINDAS ---
-if not st.session_state.abriu_cardapio:
+# ================= PRODUTOS =================
+PRODUTOS = {
+    "❄️ Frutas (Sem Lactose)": ["Goiaba", "Uva", "Maracujá", "Manga", "Morango", "Abacaxi c/ Hortelã", "Frutopia"],
+    "🍦 Gourmet (Cremosos)": ["Ninho c/ Nutella", "Ninho c/ Morango", "Chicabon", "Mousse de Maracujá",
+                              "Pudim de Leite", "Açaí Cremoso", "Coco Cremoso"],
+    "🍹 Alcoólicos (+18)": ["Piña Colada", "Sex on the Beach", "Caipirinha",
+                            "Batida de Maracujá", "Batida de Morango"],
+    "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G", "Crunch Cake"]
+}
+
+# ================= ESTOQUE =================
+ESTOQUE = {
+    "Goiaba": 4, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
+    "Abacaxi c/ Hortelã": 1, "Frutopia": 3,
+    "Ninho c/ Nutella": 5, "Ninho c/ Morango": 4, "Chicabon": 4,
+    "Mousse de Maracujá": 3, "Pudim de Leite": 5,
+    "Açaí Cremoso": 4, "Coco Cremoso": 6,
+    "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
+    "Batida de Maracujá": 2, "Batida de Morango": 1,
+    "Empadão Frango P": 5,
+    "Empadão Frango G": 0,
+    "Crunch Cake": 4
+}
+
+# ================= FOTOS =================
+FOTOS = {
+    "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
+    "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
+}
+
+# ================= BANCO =================
+conn = sqlite3.connect('doceria.db', check_same_thread=False)
+c = conn.cursor()
+
+c.execute('''CREATE TABLE IF NOT EXISTS usuarios (
+    nome TEXT, email TEXT PRIMARY KEY, senha TEXT,
+    endereco TEXT, nascimento TEXT, instrucoes TEXT)''')
+
+c.execute('''CREATE TABLE IF NOT EXISTS vendas (
+    data TEXT, cliente TEXT, item TEXT,
+    qtd INTEGER, total REAL, pagamento TEXT)''')
+conn.commit()
+
+# ================= SESSION =================
+if "etapa" not in st.session_state:
+    st.session_state.etapa = "boas_vindas"
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+# ================= BOAS-VINDAS =================
+if st.session_state.etapa == "boas_vindas":
     st.markdown("<h1 style='text-align: center; color: #E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
-    st.write("---")
-    st.markdown("<h3 style='text-align: center;'>Feitos artesanalmente para você. ❤️</h3>", unsafe_allow_html=True)
-    
-    col_v1, col_v2, col_v3 = st.columns([1, 2, 1])
-    with col_v2:
-        if st.button("✨ VER CARDÁPIO E ESTOQUE", use_container_width=True):
-            st.session_state.abriu_cardapio = True
-            st.rerun()
 
-# --- TELA 2: CARDÁPIO E PEDIDO ---
-else:
-    if st.button("⬅️ Voltar ao Início"):
-        st.session_state.abriu_cardapio = False
+    if st.button("🔑 ENTRAR / LOGIN", use_container_width=True):
+        st.session_state.etapa = "login"
         st.rerun()
 
-    st.title("Cardápio do Dia 🍦")
-    
-    # Sistema de Cupom
-    cupons_input = st.text_input("Possui cupom de morador?").strip().upper()
-    eh_morador = ("MACHADORIBEIRO" in cupons_input or "GARAGEMLOLA" in cupons_input)
-    
-    p_fruta = 5.00 if eh_morador else 8.00
-    p_gourmet = 7.00 if eh_morador else 9.00
-    p_alcoolico = 9.00 if eh_morador else 10.00
+    if st.button("✨ CRIAR CONTA", use_container_width=True):
+        st.session_state.etapa = "cadastro"
+        st.rerun()
 
-    pedido_lista_zap = []
-    dados_para_tabela = []
-    total_bruto = 0.0
+# ================= CADASTRO =================
+elif st.session_state.etapa == "cadastro":
+    st.title("Cadastro")
 
-    # --- BLOCO FIXO: SACOLÉS ---
-    st.header("❄️ Nossos Sacolés")
-    estoque_full = {
-        "Frutas (Sem Lactose)": [
-            {"item": "Goiaba", "p": p_fruta, "est": 4},
-            {"item": "Uva", "p": p_fruta, "est": 0},
-            {"item": "Maracujá", "p": p_fruta, "est": 0},
-            {"item": "Manga", "p": p_fruta, "est": 4},
-            {"item": "Morango", "p": p_fruta, "est": 0},
-            {"item": "Abacaxi c/ Hortelã", "p": p_fruta, "est": 1},
-            {"item": "Frutopia", "p": p_fruta, "est": 3}
-        ],
-        "Gourmet (Cremosos)": [
-            {"item": "Ninho c/ Nutella", "p": p_gourmet, "est": 5},
-            {"item": "Ninho c/ Morango", "p": p_gourmet, "est": 4},
-            {"item": "Chicabon", "p": p_gourmet, "est": 4},
-            {"item": "Mousse de Maracujá", "p": p_gourmet, "est": 3},
-            {"item": "Pudim de Leite", "p": p_gourmet, "est": 5},
-            {"item": "Açaí Cremoso", "p": p_gourmet, "est": 4},
-            {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}
-        ],
-        "Alcoólicos (+18)": [
-            {"item": "Piña Colada", "p": p_alcoolico, "est": 1},
-            {"item": "Sex on the Beach", "p": p_alcoolico, "est": 0},
-            {"item": "Caipirinha", "p": p_alcoolico, "est": 2},
-            {"item": "Batida de Maracujá", "p": p_alcoolico, "est": 2},
-            {"item": "Batida de Morango", "p": p_alcoolico, "est": 1}
-        ]
+    with st.form("cad"):
+        nome = st.text_input("Nome")
+        email = st.text_input("Email").lower()
+        senha = st.text_input("Senha", type="password")
+        endereco = st.text_input("Endereço")
+        nascimento = st.text_input("Nascimento (dd/mm)")
+        instrucoes = st.text_area("Onde deixar")
+
+        if st.form_submit_button("Criar conta"):
+            try:
+                c.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?)",
+                          (nome, email, senha, endereco, nascimento, instrucoes))
+                conn.commit()
+                st.success("Conta criada!")
+                st.session_state.etapa = "login"
+                st.rerun()
+            except:
+                st.error("Email já cadastrado")
+
+    if st.button("Voltar"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+# ================= LOGIN =================
+elif st.session_state.etapa == "login":
+    st.title("Login")
+
+    email = st.text_input("Email").lower()
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        if email == ADMIN_USER and senha == ADMIN_PASS:
+            st.session_state.etapa = "admin"
+            st.rerun()
+
+        c.execute("SELECT * FROM usuarios WHERE email=? AND senha=?", (email, senha))
+        res = c.fetchone()
+
+        if res:
+            st.session_state.user = {
+                "nome": res[0],
+                "email": res[1],
+                "end": res[3],
+                "nasc": res[4],
+                "inst": res[5]
+            }
+            st.session_state.etapa = "cardapio"
+            st.rerun()
+        else:
+            st.error("Login inválido")
+
+    if st.button("Voltar"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+# ================= CARDÁPIO =================
+elif st.session_state.etapa == "cardapio":
+    u = st.session_state.user
+
+    if st.button("Sair"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+    st.title(f"Olá, {u['nome']} 🍦")
+
+    # -------- CUPONS --------
+    cupom = st.text_input("Possui cupom?").upper()
+    eh_morador = "MACHADORIBEIRO" in cupom
+    eh_garagem = "GARAGEMLOLA" in cupom
+    eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
+
+    total = 0
+    itens = []
+    precos_para_brinde = []
+
+         # -------- PREÇOS --------
+
+    # preços por categoria
+    PRECOS = {
+        "❄️ Frutas (Sem Lactose)": {"normal": 8.0, "morador": 5.0},
+        "🍦 Gourmet (Cremosos)": {"normal": 9.0, "morador": 7.0},
+        "🍹 Alcoólicos (+18)": {"normal": 10.0, "morador": 9.0},
+        "🥧 Salgados e Doces": {"normal": 12.0, "morador": 12.0}  # não muda
     }
 
-    for categoria, itens in estoque_full.items():
+    for categoria, lista_produtos in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
-            for i in itens:
-                c1, c2, c3 = st.columns([3, 1, 1])
-                c1.write(f"**{i['item']}**\nR$ {i['p']:.2f}")
-                c2.write(f"Est: {i['est']}")
-                if i['est'] > 0:
-                    qtd = c3.number_input("Qtd", 0, i['est'], key=f"sac_{i['item']}", label_visibility="collapsed")
-                    if qtd > 0:
-                        total_bruto += (qtd * i['p'])
-                        pedido_lista_zap.append(f"✅ {qtd}x {i['item']}")
-                        dados_para_tabela.append({"Item": i['item'], "Tipo": "Sacolé", "Qtd": qtd, "Subtotal": qtd * i['p']})
+
+            for produto in lista_produtos:
+                estoque = ESTOQUE.get(produto, 0)
+
+                # define preço correto
+                if eh_morador:
+                    preco = PRECOS[categoria]["morador"]
                 else:
-                    c3.write("❌")
+                    preco = PRECOS[categoria]["normal"]
 
-    # --- BLOCO: SALGADOS E SOBREMESAS ---
-    st.header("🥧 Salgados e Doces")
-    
-    # Empadão com Foto
-    col_img_e, col_txt_e = st.columns([1, 1.5])
-    with col_img_e:
-        st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg")
-    with col_txt_e:
-        st.write("**Empadão Frango (P)**")
-        q_p = st.number_input("Qtd Pequeno (R$ 12,00)", 0, 5, key="emp_p")
-        st.write("**Empadão Frango (G)**")
-        q_g = st.number_input("Qtd Grande (R$ 18,00)", 0, 0, key="emp_g") # Estoque 0
+                col1, col2, col3 = st.columns([3,1,1])
 
-    # Bolo com Foto
-    col_img_b, col_txt_b = st.columns([1, 1.5])
-    with col_img_b:
-        st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg")
-    with col_txt_b:
-        st.write("**Crunch Cake (Pote)**")
-        q_b = st.number_input("Qtd Bolo (R$ 10,00)", 0, 4, key="bolo_p")
+                with col1:
+                    st.write(f"**{produto}**  \nR$ {preco:.2f}")
+                    if produto in FOTOS:
+                        st.image(FOTOS[produto], width=120)
 
-    # Cálculos Salgados/Bolo
-    if q_p > 0:
-        total_bruto += (q_p * 12.0)
-        pedido_lista_zap.append(f"✅ {q_p}x Empadão P")
-        dados_para_tabela.append({"Item": "Empadão P", "Tipo": "Salgado", "Qtd": q_p, "Subtotal": q_p * 12.0})
-    if q_b > 0:
-        total_bruto += (q_b * 10.0)
-        pedido_lista_zap.append(f"✅ {q_b}x Bolo Pote")
-        dados_para_tabela.append({"Item": "Crunch Cake", "Tipo": "Bolo", "Qtd": q_b, "Subtotal": q_b * 10.0})
+                with col2:
+                    st.write(f"Est: {estoque}")
 
-    # --- EXIBIÇÃO DO TOTAL (ANTES DOS DADOS) ---
-    if total_bruto > 0:
-        st.markdown(f"## 💰 Subtotal: R$ {total_bruto:.2f}")
-        st.divider()
+                with col3:
+                    if estoque > 0:
+                        qtd = st.number_input(
+                            "Qtd",
+                            min_value=0,
+                            max_value=estoque,
+                            key=f"qtd_{produto}"
+                        )
+                        if qtd:
+                            total += qtd * preco
+                            itens.append((produto, qtd))
+                            precos_para_brinde.extend([preco] * qtd)
+                    else:
+                        st.write("❌")
 
-        # --- DADOS DE ENTREGA ---
-        st.header("🚚 Informações de Entrega")
-        nome = st.text_input("Seu Nome:")
-        
+
+    # -------- BRINDE ANIVERSÁRIO --------
+    if eh_niver and precos_para_brinde:
+        desconto = max(precos_para_brinde)
+        total -= desconto
+        st.success(f"🎂 NIVERDOCE aplicado! 1 item grátis (-R$ {desconto:.2f})")
+
+    st.markdown(f"## 💰 Total: R$ {total:.2f}")
+
+    # -------- ENTREGA --------
+    st.header("🚚 Entrega")
+
+    with st.expander("Confirmar dados de entrega", expanded=True):
+
+        nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
+
         if eh_morador:
-            apto = st.text_input("Seu Apartamento:")
-            opcao = st.radio("Como prefere?", ["Entregar agora", "Vou buscar no 902", "Agendar Entrega"])
-            detalhe_ent = f"Apto {apto} | Modo: {opcao}"
-            if opcao == "Agendar Entrega":
-                h = st.text_input("Horário do Agendamento:")
-                detalhe_ent += f" ({h})"
+            apto = st.text_input("Apartamento", value=u["end"])
+            modo_entrega = st.radio(
+                "Como prefere?",
+                ["Entregar agora", "Agendar entrega", "Vou buscar no 902"]
+            )
+
+            horario_agendado = ""
+            if modo_entrega == "Agendar entrega":
+                horario_agendado = st.text_input("Horário desejado")
+
+            detalhe_entrega = f"Apto {apto} | {modo_entrega}"
+            if horario_agendado:
+                detalhe_entrega += f" às {horario_agendado}"
+
+            destinatario = NUMERO_YASMIN
+
         else:
-            apto = "Externo"
-            end = st.text_input("Endereço Completo:")
-            recebe = st.text_input("Quem recebe no local?")
-            obs = st.text_area("Instruções (onde bater/interfonar):")
-            detalhe_ent = f"Endereço: {end} | Recebe: {recebe} | Obs: {obs}"
+            endereco = st.text_input("Endereço", value=u["end"])
+            quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
+            instrucoes = st.text_area("Instruções", value=u["inst"])
 
-        # --- PAGAMENTO ---
-        st.header("💳 Pagamento")
-        forma = st.radio("Forma de Pagamento:", ["PIX", "Dinheiro", "Cartão"])
-        
-        if forma == "PIX":
-            st.success(f"🔑 **Chave PIX:** {CHAVE_PIX}")
-            st.info(f"📧 Envie o comprovante para: **{EMAIL_COMPROVANTE}**\n📝 **Assunto:** Comprovante Apto {apto}")
+            detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
+            destinatario = NUMERO_JAQUE
 
-        # --- FINALIZAÇÃO ---
-        st.markdown(f"### Total Final: R$ {total_bruto:.2f}")
-        
-        if nome and (eh_morador and apto or not eh_morador and end):
-            destinatario = NUMERO_YASMIN if eh_morador else NUMERO_JAQUE
-            txt_pedido = "\n".join(pedido_lista_zap)
-            link_msg = f"🍦 *NOVO PEDIDO*\n👤 Nome: {nome}\n📍 {detalhe_ent}\n💳 Pagto: {forma}\n\n*ITENS:*\n{txt_pedido}\n\n💰 *TOTAL: R$ {total_bruto:.2f}*"
-            
-            st.link_button("🚀 ENVIAR PEDIDO NO WHATSAPP", f"https://wa.me/{destinatario}?text={urllib.parse.quote(link_msg)}", type="primary")
+        # -------- PAGAMENTO --------
+    st.header("💳 Pagamento")
 
-    # --- ÁREA DA YASMIN (DASHBOARD ESCONDIDO NA SIDEBAR) ---
-    with st.sidebar:
-        st.title("📊 Gestão Interna")
-        if st.checkbox("Exibir Relatório de Vendas (Yasmin)"):
-            if total_bruto > 0:
-                st.write(f"### Pedido de: {nome}")
-                df = pd.DataFrame(dados_para_tabela)
-                st.subheader("Tabela de Sabores")
-                st.table(df)
-                
-                st.subheader("Tabela por Apartamento")
-                df_apto = pd.DataFrame([{"Apartamento": apto, "Qtd Itens": sum(d['Qtd'] for d in dados_para_tabela), "Total": total_bruto}])
-                st.table(df_apto)
-            else:
-                st.info("Nenhum item selecionado para gerar relatório.")
+    opcoes_pagamento = ["PIX", "Dinheiro"]
+
+    # GARAGEMLOLA adiciona opção extra
+    if eh_garagem:
+        opcoes_pagamento.append("Acertar na garagem")
+
+    forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
+
+    if forma_pgto == "PIX":
+        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+        st.info(f"📧 Envie o comprovante para: {EMAIL_COMPROVANTE}")
+
+    if forma_pgto == "Acertar na garagem":
+        st.info("Pagamento será acertado posteriormente na garagem.")
+
+    # -------- FINALIZAR --------
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+        else:
+            for produto, qtd in itens:
+                c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
+                          (datetime.now().strftime("%d/%m %H:%M"),
+                           u["nome"], produto, qtd, total, forma_pgto))
+            conn.commit()
+
+            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+
+            msg = (
+                f"🍦 Pedido de {u['nome']}\n"
+                f"📍 {detalhe_entrega}\n"
+                f"💳 {forma_pgto}\n\n"
+                f"{lista_txt}\n\n"
+                f"💰 Total: R$ {total:.2f}"
+            )
+
+            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+            st.success("Pedido registrado!")
+            st.link_button("Enviar no WhatsApp", link)
