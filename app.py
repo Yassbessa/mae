@@ -50,13 +50,21 @@ FOTOS = {
 conn = sqlite3.connect('doceria.db', check_same_thread=False)
 c = conn.cursor()
 
-c.execute('''CREATE TABLE IF NOT EXISTS usuarios (
-    nome TEXT, email TEXT PRIMARY KEY, senha TEXT,
-    endereco TEXT, nascimento TEXT, instrucoes TEXT)''')
+# ===== ATUALIZAÇÃO SEGURA DO BANCO =====
 
-c.execute('''CREATE TABLE IF NOT EXISTS vendas (
-    data TEXT, cliente TEXT, item TEXT,
-    qtd INTEGER, total REAL, pagamento TEXT)''')
+# adiciona tipo_cliente na tabela usuarios
+try:
+    c.execute("ALTER TABLE usuarios ADD COLUMN tipo_cliente TEXT")
+except:
+    pass
+
+# adiciona colunas novas na tabela vendas
+for coluna in ["cliente_email", "categoria", "cupom"]:
+    try:
+        c.execute(f"ALTER TABLE vendas ADD COLUMN {coluna} TEXT")
+    except:
+        pass
+
 conn.commit()
 
 # ================= SESSION =================
@@ -92,8 +100,13 @@ elif st.session_state.etapa == "cadastro":
 
         if st.form_submit_button("Criar conta"):
             try:
-                c.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?)",
-                          (nome, email, senha, endereco, nascimento, instrucoes))
+                tipo_cliente = "Morador" if "85" in endereco else "Externo"
+
+                c.execute("""
+                    INSERT INTO usuarios (nome, email, senha, endereco, nascimento, instrucoes, tipo_cliente)
+                    VALUES (?,?,?,?,?,?,?)
+                """, (nome, email, senha, endereco, nascimento, instrucoes, tipo_cliente))
+
                 conn.commit()
                 st.success("Conta criada!")
                 st.session_state.etapa = "login"
@@ -281,28 +294,36 @@ elif st.session_state.etapa == "cardapio":
     if forma_pgto == "Acertar na garagem":
         st.info("Pagamento será acertado posteriormente na garagem.")
 
-    # -------- FINALIZAR --------
-    if st.button("Finalizar Pedido", type="primary"):
-        if not itens:
-            st.warning("Escolha ao menos um item")
-        else:
-            for produto, qtd in itens:
-                c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
-                          (datetime.now().strftime("%d/%m %H:%M"),
-                           u["nome"], produto, qtd, total, forma_pgto))
-            conn.commit()
+   # -------- FINALIZAR --------
+if st.button("Finalizar Pedido", type="primary"):
+    if not itens:
+        st.warning("Escolha ao menos um item")
+    else:
+        for produto, qtd in itens:
+            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+            c.execute("""
+                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom)
+                VALUES (?,?,?,?,?,?,?)
+            """,
+            (datetime.now().strftime("%d/%m %H:%M"),
+             u["email"], produto, categoria, qtd, total, cupom))
 
-            msg = (
-                f"🍦 Pedido de {u['nome']}\n"
-                f"📍 {detalhe_entrega}\n"
-                f"💳 {forma_pgto}\n\n"
-                f"{lista_txt}\n\n"
-                f"💰 Total: R$ {total:.2f}"
-            )
+        conn.commit()
 
-            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+        lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
 
-            st.success("Pedido registrado!")
-            st.link_button("Enviar no WhatsApp", link)
+        msg = (
+            f"🍦 Pedido de {u['nome']}\n"
+            f"📍 {detalhe_entrega}\n"
+            f"💳 {forma_pgto}\n\n"
+            f"{lista_txt}\n\n"
+            f"💰 Total: R$ {total:.2f}\n\n"
+            f"📸 Envie o comprovante neste chat."
+        )
+
+        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+        st.success("Pedido registrado!")
+        st.link_button("Enviar no WhatsApp", link)
+
