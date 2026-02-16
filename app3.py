@@ -157,12 +157,12 @@ elif st.session_state.etapa == "cardapio":
     itens = []
     precos_para_brinde = []
 
+    # -------- PRODUTOS --------
     for categoria, lista_produtos in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
             for produto in lista_produtos:
                 estoque = ESTOQUE.get(produto, 0)
 
-                # preços base
                 preco = 8.0
                 if "Gourmet" in categoria:
                     preco = 9.0
@@ -175,7 +175,6 @@ elif st.session_state.etapa == "cardapio":
                 if produto == "Crunch Cake":
                     preco = 10.0
 
-                # desconto morador
                 if eh_morador:
                     preco -= 2
 
@@ -208,6 +207,38 @@ elif st.session_state.etapa == "cardapio":
 
     st.markdown(f"## 💰 Total: R$ {total:.2f}")
 
+    # -------- ENTREGA --------
+    st.header("🚚 Entrega")
+
+    with st.expander("Confirmar dados de entrega", expanded=True):
+
+        nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
+
+        if eh_morador:
+            apto = st.text_input("Apartamento", value=u["end"])
+            modo_entrega = st.radio(
+                "Como prefere?",
+                ["Entregar agora", "Agendar entrega", "Vou buscar no 902"]
+            )
+
+            horario_agendado = ""
+            if modo_entrega == "Agendar entrega":
+                horario_agendado = st.text_input("Horário desejado")
+
+            detalhe_entrega = f"Apto {apto} | {modo_entrega}"
+            if horario_agendado:
+                detalhe_entrega += f" às {horario_agendado}"
+
+            destinatario = NUMERO_YASMIN
+
+        else:
+            endereco = st.text_input("Endereço", value=u["end"])
+            quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
+            instrucoes = st.text_area("Instruções", value=u["inst"])
+
+            detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
+            destinatario = NUMERO_JAQUE
+
     # -------- PAGAMENTO --------
     st.header("💳 Pagamento")
 
@@ -233,28 +264,16 @@ elif st.session_state.etapa == "cardapio":
             conn.commit()
 
             lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
-            msg = f"🍦 Pedido de {u['nome']}\n📍 {u['end']}\n💳 {forma_pgto}\n\n{lista_txt}\n\n💰 Total: R$ {total:.2f}"
 
-            link = f"https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg)}"
+            msg = (
+                f"🍦 Pedido de {u['nome']}\n"
+                f"📍 {detalhe_entrega}\n"
+                f"💳 {forma_pgto}\n\n"
+                f"{lista_txt}\n\n"
+                f"💰 Total: R$ {total:.2f}"
+            )
+
+            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
             st.success("Pedido registrado!")
             st.link_button("Enviar no WhatsApp", link)
-
-# ================= ADMIN =================
-elif st.session_state.etapa == "admin":
-    st.title("Painel Admin")
-
-    if st.button("Sair"):
-        st.session_state.etapa = "boas_vindas"
-        st.rerun()
-
-    df = pd.read_sql("SELECT * FROM vendas", conn)
-
-    if df.empty:
-        st.info("Sem vendas ainda.")
-    else:
-        st.subheader("Produtos mais vendidos")
-        st.bar_chart(df["item"].value_counts())
-
-        st.subheader("Histórico de vendas")
-        st.dataframe(df, use_container_width=True)
