@@ -127,7 +127,7 @@ elif st.session_state.etapa == "login":
 
     if st.button("Entrar"):
         if email == ADMIN_USER and senha == ADMIN_PASS:
-            st.session_state.etapa = "admin"
+            st.session_state.etapa = "painel_admin"
             st.rerun()
 
         c.execute("SELECT * FROM usuarios WHERE email=? AND senha=?", (email, senha))
@@ -349,36 +349,35 @@ elif st.session_state.etapa == "cardapio":
     if forma_pgto == "Acertar na garagem":
         st.info("Pagamento será acertado posteriormente na garagem.")
 
-   # -------- FINALIZAR --------
-if st.button("Finalizar Pedido", type="primary"):
-    if not itens:
-        st.warning("Escolha ao menos um item")
-    else:
-        for produto, qtd in itens:
-            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+  # -------- FINALIZAR --------
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+        else:
+            for produto, qtd in itens:
+                categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-            c.execute("""
-                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom)
-                VALUES (?,?,?,?,?,?,?)
-            """,
-            (datetime.now().strftime("%d/%m %H:%M"),
-             u["email"], produto, categoria, qtd, total, cupom))
+                c.execute("""
+                    INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom)
+                    VALUES (?,?,?,?,?,?,?)
+                """,
+                (datetime.now().strftime("%d/%m %H:%M"),
+                 u["email"], produto, categoria, qtd, total, cupom))
 
-        conn.commit()
+            conn.commit()
 
-        lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
 
-        msg = (
-            f"🍦 Pedido de {u['nome']}\n"
-            f"📍 {detalhe_entrega}\n"
-            f"💳 {forma_pgto}\n\n"
-            f"{lista_txt}\n\n"
-            f"💰 Total: R$ {total:.2f}\n\n"
-            f"📸 Envie o comprovante neste chat."
-        )
+            msg = (
+                f"🍦 Pedido de {u['nome']}\n"
+                f"📍 {detalhe_entrega}\n"
+                f"💳 {forma_pgto}\n\n"
+                f"{lista_txt}\n\n"
+                f"💰 Total: R$ {total:.2f}\n\n"
+                f"📸 Envie o comprovante neste chat."
+            )
 
-        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+            link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
-        st.success("Pedido registrado!")
-        st.link_button("Enviar no WhatsApp", link)
-
+            st.success("Pedido registrado!")
+            st.link_button("Enviar no WhatsApp", link)
