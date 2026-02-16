@@ -433,7 +433,7 @@ elif st.session_state.etapa == "cardapio":
         # 🔒 instruções extras para PIX
         if forma_pgto == "PIX":
             msg += (
-                "\n\n📸 O comprovante foi enviado pelo app."
+                "\n\n O comprovante foi enviado pelo app."
                 "\nSe não aparecer para você, posso reenviar por aqui."
             )
         
