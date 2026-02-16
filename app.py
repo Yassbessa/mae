@@ -361,12 +361,20 @@ if st.button("Finalizar Pedido", type="primary"):
         st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
         st.stop()
 
-    # 💾 salva comprovante
-    caminho_comprovante = ""
-    if comprovante is not None:
-        caminho_comprovante = f"comprovantes/{comprovante.name}"
-        with open(caminho_comprovante, "wb") as f:
-            f.write(comprovante.getbuffer())
+    import os  # coloque no topo do arquivo uma vez
+
+# 💾 salva comprovante
+caminho_comprovante = ""
+
+if comprovante is not None:
+    pasta = "comprovantes"
+    os.makedirs(pasta, exist_ok=True)  # cria pasta se não existir
+
+    caminho_comprovante = os.path.join(pasta, comprovante.name)
+
+    with open(caminho_comprovante, "wb") as f:
+        f.write(comprovante.getbuffer())
+
 
     # define status do pagamento
     status_pagamento = "Pago" if forma_pgto == "PIX" else "Pendente"
