@@ -35,7 +35,7 @@ ESTOQUE = {
     "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
     "Batida de Maracujá": 2, "Batida de Morango": 1,
     "Empadão Frango P": 5,
-    "Empadão Frango G": 5,
+    "Empadão Frango G": 0,
     "Crunch Cake": 4
 }
 
