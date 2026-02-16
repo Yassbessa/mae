@@ -157,47 +157,35 @@ elif st.session_state.etapa == "cardapio":
     itens = []
     precos_para_brinde = []
 
-    # -------- PRODUTOS --------
-    for categoria, lista_produtos in PRODUTOS.items():
-        with st.expander(categoria, expanded=True):
-            for produto in lista_produtos:
-                estoque = ESTOQUE.get(produto, 0)
+   # -------- PRODUTOS --------
+for categoria, lista_produtos in PRODUTOS.items():
+    with st.expander(categoria, expanded=True):
+        for produto in lista_produtos:
+            estoque = ESTOQUE.get(produto, 0)
 
-                preco = 8.0
-                if "Gourmet" in categoria:
-                    preco = 9.0
-                if "Alcoólicos" in categoria:
-                    preco = 10.0
-                if produto == "Empadão Frango P":
-                    preco = 12.0
-                if produto == "Empadão Frango G":
-                    preco = 18.0
-                if produto == "Crunch Cake":
-                    preco = 10.0
+            preco = obter_preco(produto, categoria, eh_morador)
 
-                if eh_morador:
-                    preco -= 2
+            col1, col2, col3 = st.columns([3,1,1])
 
-                col1, col2, col3 = st.columns([3,1,1])
+            with col1:
+                st.write(f"**{produto}**  \nR$ {preco:.2f}")
+                if produto in FOTOS:
+                    st.image(FOTOS[produto], width=120)
 
-                with col1:
-                    st.write(f"**{produto}**  \nR$ {preco:.2f}")
-                    if produto in FOTOS:
-                        st.image(FOTOS[produto], width=120)
+            with col2:
+                st.write(f"Est: {estoque}")
 
-                with col2:
-                    st.write(f"Est: {estoque}")
+            with col3:
+                if estoque > 0:
+                    qtd = st.number_input("Qtd", 0, estoque, key=produto)
+                    if qtd:
+                        total += qtd * preco
+                        itens.append((produto, qtd))
+                        for _ in range(qtd):
+                            precos_para_brinde.append(preco)
+                else:
+                    st.write("❌")
 
-                with col3:
-                    if estoque > 0:
-                        qtd = st.number_input("Qtd", 0, estoque, key=produto)
-                        if qtd:
-                            total += qtd * preco
-                            itens.append((produto, qtd))
-                            for _ in range(qtd):
-                                precos_para_brinde.append(preco)
-                    else:
-                        st.write("❌")
 
     # -------- BRINDE ANIVERSÁRIO --------
     if eh_niver and precos_para_brinde:
