@@ -245,18 +245,23 @@ elif st.session_state.etapa == "cardapio":
             detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
             destinatario = NUMERO_JAQUE
 
-    # -------- PAGAMENTO --------
+        # -------- PAGAMENTO --------
     st.header("💳 Pagamento")
 
-    if eh_garagem:
-        forma_pgto = "Acerto na garagem"
-        st.info("Pagamento será acertado posteriormente na garagem.")
-    else:
-        forma_pgto = st.radio("Forma de pagamento:", ["PIX", "Dinheiro", "Cartão"])
+    opcoes_pagamento = ["PIX", "Dinheiro"]
 
-        if forma_pgto == "PIX":
-            st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
-            st.info(f"📧 Envie o comprovante para: {EMAIL_COMPROVANTE}")
+    # GARAGEMLOLA adiciona opção extra
+    if eh_garagem:
+        opcoes_pagamento.append("Acertar na garagem")
+
+    forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
+
+    if forma_pgto == "PIX":
+        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+        st.info(f"📧 Envie o comprovante para: {EMAIL_COMPROVANTE}")
+
+    if forma_pgto == "Acertar na garagem":
+        st.info("Pagamento será acertado posteriormente na garagem.")
 
     # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
