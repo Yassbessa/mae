@@ -32,7 +32,7 @@ PRODUTOS = {
                               "Pudim de Leite", "Açaí Cremoso", "Coco Cremoso"],
     "🍹 Alcoólicos (+18)": ["Piña Colada", "Sex on the Beach", "Caipirinha",
                             "Batida de Maracujá", "Batida de Morango"],
-    "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G": 0, "Crunch Cake"]
+    "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G", "Crunch Cake"]
 }
 
 # =========================================================
@@ -46,7 +46,7 @@ ESTOQUE = {
     "Açaí Cremoso": 4, "Coco Cremoso": 6,
     "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
     "Batida de Maracujá": 2, "Batida de Morango": 1,
-    "Empadão Frango P": 5, "Empadão Frango G": 5"Crunch Cake": 4
+    "Empadão Frango P": 5, "Empadão Frango G": 5, "Crunch Cake": 4
 }
 
 # =========================================================
@@ -61,6 +61,7 @@ FOTOS = {
     "Piña Colada": "", "Sex on the Beach": "", "Caipirinha": "",
     "Batida de Maracujá": "", "Batida de Morango": "",
     "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
     "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
 }
 
