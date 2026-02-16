@@ -69,6 +69,24 @@ ESTOQUE = {
     "Crunch Cake (180g)": 2
 }
 
+# ================= ALERTAS DE ESTOQUE =================
+st.subheader("📦 Status do Estoque")
+
+produtos_esgotados = {p: q for p, q in ESTOQUE.items() if q == 0}
+produtos_criticos = {p: q for p, q in ESTOQUE.items() if q == 1}
+
+if produtos_esgotados:
+    st.error("❌ Produtos esgotados")
+    st.write(produtos_esgotados)
+
+if produtos_criticos:
+    st.warning("⚠️ Última unidade em estoque")
+    st.write(produtos_criticos)
+
+if not produtos_esgotados and not produtos_criticos:
+    st.success("✅ Estoque saudável")
+
+
 # ================= FOTOS =================
 FOTOS = {
     "Empadão Frango P (220mL)": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
@@ -448,34 +466,37 @@ elif st.session_state.etapa == "cardapio":
     # -------- ENTREGA --------
     st.header("🚚 Entrega")
 
-    with st.expander("Confirmar dados de entrega", expanded=True):
+   with st.expander("Confirmar dados de entrega", expanded=True):
 
-        nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
+    nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
 
-        if eh_morador:
-            apto = st.text_input("Apartamento", value=u["end"])
-            modo_entrega = st.radio(
-                "Como prefere?",
-                ["Entregar agora", "Agendar entrega", "Vou buscar no 902"]
-            )
+    # 🔹 interface única para todos
+    modo_entrega = st.radio(
+        "Como prefere receber?",
+        ["Entregar agora", "Agendar entrega", "Retirar no local"]
+    )
 
-            horario_agendado = ""
-            if modo_entrega == "Agendar entrega":
-                horario_agendado = st.text_input("Horário desejado")
+    horario_agendado = ""
+    if modo_entrega == "Agendar entrega":
+        horario_agendado = st.text_input("Horário desejado")
 
-            detalhe_entrega = f"Apto {apto} | {modo_entrega}"
-            if horario_agendado:
-                detalhe_entrega += f" às {horario_agendado}"
+    # 🔹 dados específicos por tipo de cliente
+    if eh_morador:
+        apto = st.text_input("Apartamento", value=u["end"])
+        detalhe_entrega = f"Apto {apto} | {modo_entrega}"
+        destinatario = NUMERO_YASMIN
+    else:
+        endereco = st.text_input("Endereço", value=u["end"])
+        quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
+        instrucoes = st.text_area("Instruções", value=u["inst"])
 
-            destinatario = NUMERO_YASMIN
+        detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes} | {modo_entrega}"
+        destinatario = NUMERO_JAQUE
 
-        else:
-            endereco = st.text_input("Endereço", value=u["end"])
-            quem_recebe = st.text_input("Quem recebe", value=nome_recebimento)
-            instrucoes = st.text_area("Instruções", value=u["inst"])
+    # 🔹 adiciona horário se houver
+    if horario_agendado:
+        detalhe_entrega += f" às {horario_agendado}"
 
-            detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
-            destinatario = NUMERO_JAQUE
 
 
 
