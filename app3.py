@@ -157,25 +157,27 @@ elif st.session_state.etapa == "cardapio":
     itens = []
     precos_para_brinde = []
 
-      # -------- PRODUTOS --------
-    # Tabela simples de preços
+         # -------- PREÇOS --------
+
+    # preços por categoria
     PRECOS = {
-        "❄️ Frutas (Sem Lactose)": 5.00,
-        "🍦 Gourmet (Cremosos)": 7.00,
-        "🍹 Alcoólicos (+18)": 10.00,
-        "🥧 Salgados e Doces": 12.00
+        "❄️ Frutas (Sem Lactose)": {"normal": 8.0, "morador": 5.0},
+        "🍦 Gourmet (Cremosos)": {"normal": 9.0, "morador": 7.0},
+        "🍹 Alcoólicos (+18)": {"normal": 10.0, "morador": 9.0},
+        "🥧 Salgados e Doces": {"normal": 12.0, "morador": 12.0}  # não muda
     }
 
     for categoria, lista_produtos in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
 
-            preco_base = PRECOS.get(categoria, 5.00)
-
             for produto in lista_produtos:
                 estoque = ESTOQUE.get(produto, 0)
 
-                # desconto para moradores
-                preco = preco_base * 0.9 if eh_morador else preco_base
+                # define preço correto
+                if eh_morador:
+                    preco = PRECOS[categoria]["morador"]
+                else:
+                    preco = PRECOS[categoria]["normal"]
 
                 col1, col2, col3 = st.columns([3,1,1])
 
@@ -201,6 +203,7 @@ elif st.session_state.etapa == "cardapio":
                             precos_para_brinde.extend([preco] * qtd)
                     else:
                         st.write("❌")
+
 
     # -------- BRINDE ANIVERSÁRIO --------
     if eh_niver and precos_para_brinde:
