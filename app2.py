@@ -4,10 +4,10 @@ import sqlite3
 import urllib.parse
 from datetime import datetime
 
-# --- CONFIGURAÇÃO (CENTRALIZADO) ---
+# --- 1. CONFIGURAÇÃO ---
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
 
-# --- BANCO DE DADOS LOCAL ---
+# --- 2. BANCO DE DADOS ---
 conn = sqlite3.connect('doceria.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS usuarios 
@@ -33,7 +33,7 @@ if st.session_state.etapa == "boas_vindas":
     st.write("---")
     if st.button("🔑 ENTRAR / LOGIN", use_container_width=True):
         st.session_state.etapa = "login"; st.rerun()
-    if st.button("✨ CRIAR UMA CONTA", use_container_width=True):
+    if st.button("✨ CRIAR CONTA", use_container_width=True):
         st.session_state.etapa = "cadastro"; st.rerun()
 
 # ==========================================
@@ -46,9 +46,9 @@ elif st.session_state.etapa == "cadastro":
         n_email = st.text_input("E-mail:")
         n_pass = st.text_input("Crie uma Senha:", type="password")
         n_end = st.text_input("Endereço (Ex: Rua 24 de Maio, 85 / Apto 101):")
-        n_nasc = st.text_input("Data de Nascimento (Ex: 15/02):")
+        n_nasc = st.text_input("Nascimento (Ex: 15/02):")
         n_inst = st.text_area("Onde deixar a encomenda?")
-        if st.form_submit_button("FINALIZAR CADASTRO ✨"):
+        if st.form_submit_button("FINALIZAR ✨"):
             if n_nome and n_email and n_pass:
                 try:
                     c.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?)", (n_nome, n_email.lower(), n_pass, n_end, n_nasc, n_inst))
@@ -56,14 +56,14 @@ elif st.session_state.etapa == "cadastro":
                     st.success("Conta criada! Redirecionando...")
                     st.session_state.etapa = "login"; st.rerun()
                 except: st.error("E-mail já cadastrado!")
-            else: st.error("Preencha os campos obrigatórios!")
+            else: st.error("Preencha os campos!")
     if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
 # TELA 3: LOGIN
 # ==========================================
 elif st.session_state.etapa == "login":
-    st.title("👤 Login")
+    st.title("👤 Identificação")
     email_in = st.text_input("E-mail:").lower()
     pass_in = st.text_input("Senha:", type="password")
     if st.button("ACESSAR 🚀", type="primary", use_container_width=True):
@@ -72,13 +72,13 @@ elif st.session_state.etapa == "login":
         c.execute("SELECT * FROM usuarios WHERE email=? AND senha=?", (email_in, pass_in))
         res = c.fetchone()
         if res:
-            st.session_state.user = {"nome": res[0], "email": res[1], "end": res[3], "nasc": res[4], "inst": res[5]}
+            st.session_state.user = {"nome": res[0], "email": res[1], "end": res[2], "nasc": res[4], "inst": res[5]}
             st.session_state.etapa = "cardapio"; st.rerun()
         else: st.error("Login inválido!")
     if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
-# TELA 4: CARDÁPIO COMPLETO
+# TELA 4: CARDÁPIO (LÓGICA DE PREÇOS ORIGINAL)
 # ==========================================
 elif st.session_state.etapa == "cardapio":
     u = st.session_state.user
@@ -86,61 +86,68 @@ elif st.session_state.etapa == "cardapio":
     
     st.title(f"Olá, {u['nome']}! 🍦")
     
+    # --- LOGICA DE CUPONS DO APP.PY ---
     cupom = st.text_input("Cupom de Desconto:").strip().upper()
     metodo_pgto = "PIX / Dinheiro"
-    eh_85 = (cupom == "MACHADORIBEIRO" and "85" in u['end'])
-    eh_niver = (cupom == "NIVERDOCE" and datetime.now().strftime("%d/%m") == u['nasc'])
     
-    if cupom == "GARAGEMLOLA":
-        metodo_pgto = "GARAGEM LOLA (Pagamento Posterior)"
-        st.warning("⚠️ Cupom GARAGEMLOLA: O valor será avisado à Jaqueline para acerto posterior.")
+    # 1. Verifica Morador (Segue seu app.py: MACHADORIBEIRO ou GARAGEMLOLA)
+    eh_morador = (cupom == "MACHADORIBEIRO" or cupom == "GARAGEMLOLA")
+    
+    # 2. Verifica Aniversário (NIVERDOCE)
+    eh_niver = (cupom == "NIVERDOCE" and datetime.now().strftime("%d/%m") == u['nasc'])
 
-    p_f = 5.0 if eh_85 else (4.0 if eh_niver else 8.0)
-    p_g = 7.0 if eh_85 else (6.0 if eh_niver else 9.0)
-    p_a = 9.0 if eh_85 else (8.0 if eh_niver else 10.0)
+    # 3. TABELA DE PREÇOS DINÂMICA
+    if eh_niver:
+        p_fruta, p_gourmet, p_alcoolico = 4.0, 6.0, 8.0
+        st.success("🎂 Desconto de Aniversário Ativado!")
+    elif eh_morador:
+        p_fruta, p_gourmet, p_alcoolico = 5.0, 7.0, 9.0
+        st.success("🏠 Desconto de Morador Ativado!")
+        if cupom == "GARAGEMLOLA":
+            metodo_pgto = "ACERTO POSTERIOR (GARAGEM LOLA)"
+            st.warning("💳 Pagamento posterior autorizado.")
+    else:
+        p_fruta, p_gourmet, p_alcoolico = 8.0, 9.0, 10.0
 
     total_bruto = 0.0
     pedido_itens = []
 
-    # --- SACOLÉS ---
-    estoque_sacoles = {
-        "❄️ Frutas (R$ {:.2f})".format(p_f): [
-            {"item": "Goiaba", "p": p_f, "est": 4}, {"item": "Manga", "p": p_f, "est": 4},
-            {"item": "Abacaxi c/ Hortelã", "p": p_f, "est": 1}, {"item": "Frutopia", "p": p_f, "est": 3}
+    # --- LISTA DE PRODUTOS ---
+    estoque = {
+        "❄️ Sacolés Fruta": [
+            {"item": "Goiaba", "p": p_fruta, "est": 4}, {"item": "Manga", "p": p_fruta, "est": 4},
+            {"item": "Abacaxi c/ Hortelã", "p": p_fruta, "est": 1}, {"item": "Frutopia", "p": p_fruta, "est": 3}
         ],
-        "🍦 Gourmet (R$ {:.2f})".format(p_g): [
-            {"item": "Ninho c/ Nutella", "p": p_g, "est": 5}, {"item": "Ninho c/ Morango", "p": p_g, "est": 4},
-            {"item": "Chicabon", "p": p_g, "est": 4}, {"item": "Pudim de Leite", "p": p_g, "est": 5},
-            {"item": "Coco Cremoso", "p": p_g, "est": 6}
+        "🍦 Sacolés Gourmet": [
+            {"item": "Ninho c/ Nutella", "p": p_gourmet, "est": 5}, {"item": "Ninho c/ Morango", "p": p_gourmet, "est": 4},
+            {"item": "Chicabon", "p": p_gourmet, "est": 4}, {"item": "Pudim de Leite", "p": p_gourmet, "est": 5},
+            {"item": "Coco Cremoso", "p": p_gourmet, "est": 6}
         ],
-        "🍹 Alcoólicos (R$ {:.2f})".format(p_a): [
-            {"item": "Caipirinha", "p": p_a, "est": 2}, {"item": "Batida de Maracujá", "p": p_a, "est": 2}
+        "🍹 Alcoólicos": [
+            {"item": "Caipirinha", "p": p_alcoolico, "est": 2}, {"item": "Batida de Maracujá", "p": p_alcoolico, "est": 2}
         ]
     }
 
-    for cat, itens in estoque_sacoles.items():
+    for cat, itens in estoque.items():
         with st.expander(cat, expanded=True):
             for i in itens:
                 c1, c2, c3 = st.columns([3, 1, 1])
-                c1.write(f"**{i['item']}**")
-                c2.write(f"Est: {i['est']}")
+                c1.write(f"**{i['item']}**\nR$ {i['p']:.2f}")
                 if i['est'] > 0:
-                    q = c3.number_input("Qtd", 0, i['est'], key=f"p_{i['item']}", label_visibility="collapsed")
+                    q = c3.number_input("Qtd", 0, i['est'], key=f"p_{i['item']}")
                     if q > 0:
                         total_bruto += (q * i['p'])
                         pedido_itens.append(f"{q}x {i['item']}")
                 else: c3.write("❌")
 
-    # --- SALGADOS E DOCES (FIXADO!) ---
+    # --- SALGADOS E DOCES ---
     st.header("🥧 Salgados e Doces")
-    
-    # Empadão
     col_e1, col_e2 = st.columns([1, 1.5])
     with col_e1: st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg")
     with col_e2:
         st.write("**Empadão de Frango**")
-        q_p = st.number_input("Pequeno (R$ 12,00)", 0, 5, key="q_emp_p")
-        q_g = st.number_input("Grande (R$ 18,00)", 0, 0, key="q_emp_g") # Estoque 0
+        q_p = st.number_input("Pequeno (R$ 12,00)", 0, 5)
+        q_g = st.number_input("Grande (R$ 18,00)", 0, 0)
         if q_p > 0:
             total_bruto += (q_p * 12.0)
             pedido_itens.append(f"{q_p}x Empadão Frango P")
@@ -148,12 +155,11 @@ elif st.session_state.etapa == "cardapio":
             total_bruto += (q_g * 18.0)
             pedido_itens.append(f"{q_g}x Empadão Frango G")
 
-    # Bolo
     col_b1, col_b2 = st.columns([1, 1.5])
     with col_b1: st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg")
     with col_b2:
         st.write("**Crunch Cake (Pote)**")
-        q_b = st.number_input("Qtd (R$ 10,00)", 0, 4, key="q_bolo")
+        q_b = st.number_input("Qtd (R$ 10,00)", 0, 4)
         if q_b > 0:
             total_bruto += (q_b * 10.0)
             pedido_itens.append(f"{q_b}x Crunch Cake")
@@ -161,28 +167,28 @@ elif st.session_state.etapa == "cardapio":
     if total_bruto > 0:
         st.divider()
         st.markdown(f"## Total Final: R$ {total_bruto:.2f}")
-        op = st.radio("Como prefere?", ["Entregar agora", "Vou buscar no 902", "Agendar"])
+        op = st.radio("Entrega:", ["Entregar agora", "Vou buscar no 902", "Agendar"])
         
         if st.button("🚀 FINALIZAR PEDIDO", type="primary"):
-            # Salva cada item da venda no banco para o Admin ver
+            # Salva no Banco de Dados para a Yasmin e Jaque verem
             for item in pedido_itens:
                 c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?,?)", 
                           (datetime.now().strftime("%d/%m %H:%M"), u['nome'], u['end'], item, 1, total_bruto, metodo_pgto))
             conn.commit()
             
-            # Zap com todos os detalhes
+            # Zap
             msg = f"🍦 *NOVO PEDIDO*\n👤 {u['nome']}\n📍 {u['end']}\n💬 {op}\n📦 {', '.join(pedido_itens)}\n💰 Total: R$ {total_bruto:.2f}\n💳 PGTO: {metodo_pgto}"
             st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg)}\' /">', unsafe_allow_html=True)
 
 # ==========================================
-# TELA 5: PAINEL ADMIN (INTELIGÊNCIA)
+# TELA 5: PAINEL ADMIN (HISTÓRICO)
 # ==========================================
 elif st.session_state.etapa == "painel_admin":
-    st.title("👑 Painel Admin")
+    st.title("👑 Painel de Inteligência")
     if st.button("⬅️ Sair"): st.session_state.etapa = "boas_vindas"; st.rerun()
     df_v = pd.read_sql("SELECT * FROM vendas", conn)
     if not df_v.empty:
-        st.subheader("🏆 Sabores Campeões")
+        st.subheader("🏆 O que mais sai?")
         st.bar_chart(df_v.groupby("sabor")["qtd"].sum())
-        st.subheader("📋 Histórico")
+        st.subheader("📋 Histórico Completo")
         st.dataframe(df_v, use_container_width=True)
