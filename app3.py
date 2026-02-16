@@ -1,0 +1,228 @@
+import streamlit as st
+import sqlite3
+import urllib.parse
+from datetime import datetime
+import pandas as pd
+
+# ================= CONFIG =================
+st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
+
+NUMERO_YASMIN = "5521981816105"
+NUMERO_JAQUE = "5521976141210"
+CHAVE_PIX = "30.615.725 000155"
+EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
+
+ADMIN_USER = "admin"
+ADMIN_PASS = "jqd9191"
+
+# ================= PRODUTOS =================
+PRODUTOS = {
+    "❄️ Frutas (Sem Lactose)": ["Goiaba", "Uva", "Maracujá", "Manga", "Morango", "Abacaxi c/ Hortelã", "Frutopia"],
+    "🍦 Gourmet (Cremosos)": ["Ninho c/ Nutella", "Ninho c/ Morango", "Chicabon", "Mousse de Maracujá",
+                              "Pudim de Leite", "Açaí Cremoso", "Coco Cremoso"],
+    "🍹 Alcoólicos (+18)": ["Piña Colada", "Sex on the Beach", "Caipirinha",
+                            "Batida de Maracujá", "Batida de Morango"],
+    "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G", "Crunch Cake"]
+}
+
+# ================= ESTOQUE =================
+ESTOQUE = {
+    "Goiaba": 4, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
+    "Abacaxi c/ Hortelã": 1, "Frutopia": 3,
+    "Ninho c/ Nutella": 5, "Ninho c/ Morango": 4, "Chicabon": 4,
+    "Mousse de Maracujá": 3, "Pudim de Leite": 5,
+    "Açaí Cremoso": 4, "Coco Cremoso": 6,
+    "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
+    "Batida de Maracujá": 2, "Batida de Morango": 1,
+    "Empadão Frango P": 5,
+    "Empadão Frango G": 5,
+    "Crunch Cake": 4
+}
+
+# ================= FOTOS =================
+FOTOS = {
+    "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
+}
+
+# ================= BANCO =================
+conn = sqlite3.connect('doceria.db', check_same_thread=False)
+c = conn.cursor()
+
+c.execute('''CREATE TABLE IF NOT EXISTS usuarios (
+    nome TEXT, email TEXT PRIMARY KEY, senha TEXT,
+    endereco TEXT, nascimento TEXT, instrucoes TEXT)''')
+
+c.execute('''CREATE TABLE IF NOT EXISTS vendas (
+    data TEXT, cliente TEXT, item TEXT,
+    qtd INTEGER, total REAL, pagamento TEXT)''')
+conn.commit()
+
+# ================= SESSION =================
+if "etapa" not in st.session_state:
+    st.session_state.etapa = "boas_vindas"
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+# ================= BOAS-VINDAS =================
+if st.session_state.etapa == "boas_vindas":
+    st.markdown("<h1 style='text-align: center; color: #E67E22;'>Ja Que É Doce 🐝</h1>", unsafe_allow_html=True)
+
+    if st.button("🔑 ENTRAR / LOGIN", use_container_width=True):
+        st.session_state.etapa = "login"
+        st.rerun()
+
+    if st.button("✨ CRIAR CONTA", use_container_width=True):
+        st.session_state.etapa = "cadastro"
+        st.rerun()
+
+# ================= CADASTRO =================
+elif st.session_state.etapa == "cadastro":
+    st.title("Cadastro")
+
+    with st.form("cad"):
+        nome = st.text_input("Nome")
+        email = st.text_input("Email").lower()
+        senha = st.text_input("Senha", type="password")
+        endereco = st.text_input("Endereço")
+        nascimento = st.text_input("Nascimento (dd/mm)")
+        instrucoes = st.text_area("Onde deixar")
+
+        if st.form_submit_button("Criar conta"):
+            try:
+                c.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?)",
+                          (nome, email, senha, endereco, nascimento, instrucoes))
+                conn.commit()
+                st.success("Conta criada!")
+                st.session_state.etapa = "login"
+                st.rerun()
+            except:
+                st.error("Email já cadastrado")
+
+    if st.button("Voltar"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+# ================= LOGIN =================
+elif st.session_state.etapa == "login":
+    st.title("Login")
+
+    email = st.text_input("Email").lower()
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        if email == ADMIN_USER and senha == ADMIN_PASS:
+            st.session_state.etapa = "admin"
+            st.rerun()
+
+        c.execute("SELECT * FROM usuarios WHERE email=? AND senha=?", (email, senha))
+        res = c.fetchone()
+
+        if res:
+            st.session_state.user = {
+                "nome": res[0],
+                "email": res[1],
+                "end": res[3],
+                "nasc": res[4],
+                "inst": res[5]
+            }
+            st.session_state.etapa = "cardapio"
+            st.rerun()
+        else:
+            st.error("Login inválido")
+
+    if st.button("Voltar"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+# ================= CARDÁPIO =================
+elif st.session_state.etapa == "cardapio":
+    u = st.session_state.user
+
+    if st.button("Sair"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+    st.title(f"Olá, {u['nome']} 🍦")
+
+    total = 0
+    itens = []
+
+    for categoria, lista_produtos in PRODUTOS.items():
+        with st.expander(categoria, expanded=True):
+            for produto in lista_produtos:
+                estoque = ESTOQUE.get(produto, 0)
+
+                # preços
+                preco = 8.0
+                if "Gourmet" in categoria:
+                    preco = 9.0
+                if "Alcoólicos" in categoria:
+                    preco = 10.0
+                if produto == "Empadão Frango P":
+                    preco = 12.0
+                if produto == "Empadão Frango G":
+                    preco = 18.0
+                if produto == "Crunch Cake":
+                    preco = 10.0
+
+                col1, col2, col3 = st.columns([3,1,1])
+
+                with col1:
+                    st.write(f"**{produto}**  \nR$ {preco:.2f}")
+                    if produto in FOTOS:
+                        st.image(FOTOS[produto], width=120)
+
+                with col2:
+                    st.write(f"Est: {estoque}")
+
+                with col3:
+                    if estoque > 0:
+                        qtd = st.number_input("Qtd", 0, estoque, key=produto)
+                        if qtd:
+                            total += qtd * preco
+                            itens.append((produto, qtd))
+                    else:
+                        st.write("❌")
+
+    st.markdown(f"## Total: R$ {total:.2f}")
+
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+        else:
+            # salva vendas
+            for produto, qtd in itens:
+                c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?)",
+                          (datetime.now().strftime("%d/%m %H:%M"),
+                           u["nome"], produto, qtd, total, "PIX"))
+            conn.commit()
+
+            # mensagem WhatsApp
+            lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+            msg = f"🍦 Pedido de {u['nome']}\n📍 {u['end']}\n\n{lista_txt}\n\n💰 Total: R$ {total:.2f}"
+            link = f"https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg)}"
+
+            st.success("Pedido registrado!")
+            st.link_button("Enviar no WhatsApp", link)
+
+# ================= ADMIN =================
+elif st.session_state.etapa == "admin":
+    st.title("Painel Admin")
+
+    if st.button("Sair"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+    df = pd.read_sql("SELECT * FROM vendas", conn)
+
+    if df.empty:
+        st.info("Sem vendas ainda.")
+    else:
+        st.subheader("Produtos mais vendidos")
+        st.bar_chart(df["item"].value_counts())
+
+        st.subheader("Histórico de vendas")
+        st.dataframe(df, use_container_width=True)
