@@ -261,27 +261,25 @@ elif st.session_state.etapa == "cardapio":
 
     st.title(f"Olá, {u['nome']} 🍦")
 
-  # -------- CUPONS --------
-cupom = st.text_input("Possui cupom?").upper()
+    # -------- CUPONS --------
+    cupom = st.text_input("Possui cupom?").upper()
 
-eh_morador = CUPOM_MORADOR and CUPOM_MORADOR in cupom
-eh_garagem = CUPOM_GARAGEM and CUPOM_GARAGEM in cupom
-eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
+    eh_morador = CUPOM_MORADOR and CUPOM_MORADOR in cupom
+    eh_garagem = CUPOM_GARAGEM and CUPOM_GARAGEM in cupom
+    eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
 
-total = 0
-itens = []
-precos_para_brinde = []
+    total = 0
+    itens = []
+    precos_para_brinde = []
 
-         # -------- PREÇOS --------
-
-    # preços por categoria
-        PRECOS = {
+    # -------- PREÇOS --------
+    PRECOS = {
         "❄️ Frutas (Sem Lactose)": {"normal": 8.0, "morador": 5.0},
         "🍦 Gourmet (Cremosos)": {"normal": 9.0, "morador": 7.0},
         "🍹 Alcoólicos (+18)": {"normal": 10.0, "morador": 9.0},
-        "🥧 Salgados e Doces": {"normal": 12.0, "morador": 12.0}  # não muda
+        "🥧 Salgados e Doces": {"normal": 12.0, "morador": 12.0}
     }
-
+    
     for categoria, lista_produtos in PRODUTOS.items():
         with st.expander(categoria, expanded=True):
 
