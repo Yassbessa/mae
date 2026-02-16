@@ -13,7 +13,7 @@ CHAVE_PIX = "30.615.725 000155"
 EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
 
 ADMIN_USER = "admin"
-ADMIN_PASS = "SENHA_ADMIN"
+ADMIN_PASS = "jqd9191"
 
 # ================= PRODUTOS =================
 PRODUTOS = {
