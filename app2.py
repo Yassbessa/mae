@@ -70,9 +70,26 @@ ESTOQUE = {
 # =========================================================
 FOTOS = {
     "Goiaba": "",
+    "Uva": "",
+    "Maracujá": "",
     "Manga": "",
-    "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg",
-    "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg"
+    "Morango": "",
+    "Abacaxi c/ Hortelã": "",
+    "Frutopia": "",
+    "Ninho c/ Nutella": "",
+    "Ninho c/ Morango": "",
+    "Chicabon": "",
+    "Mousse de Maracujá": "",
+    "Pudim de Leite": "",
+    "Açaí Cremoso": "",
+    "Coco Cremoso": "",
+    "Piña Colada": "",
+    "Sex on the Beach": "",
+    "Caipirinha": "",
+    "Batida de Maracujá": "",
+    "Batida de Morango": "",
+    "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
 }
 
 # =========================================================
