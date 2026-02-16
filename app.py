@@ -464,9 +464,8 @@ elif st.session_state.etapa == "cardapio":
     st.markdown(f"## 💰 Total: R$ {total:.2f}")
 
     # -------- ENTREGA --------
-    st.header("🚚 Entrega")
 
-   with st.expander("Confirmar dados de entrega", expanded=True):
+with st.expander("Confirmar dados de entrega", expanded=True):
 
     nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
 
@@ -497,6 +496,8 @@ elif st.session_state.etapa == "cardapio":
     if horario_agendado:
         detalhe_entrega += f" às {horario_agendado}"
 
+
+   
 
 
 
