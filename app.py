@@ -510,11 +510,12 @@ elif st.session_state.etapa == "cardapio":
     comprovante = None
 
     if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
-        comprovante = st.file_uploader(
-            "Envie o comprovante do PIX",
-            type=["png", "jpg", "jpeg", "pdf"]
-        )
+    st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+    comprovante = st.file_uploader(
+        "Envie o comprovante do PIX",
+        type=["png", "jpg", "jpeg", "pdf"]
+    )
+
 
     # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
