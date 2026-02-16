@@ -1,0 +1,12 @@
+# Dados sensíveis
+.env
+
+# Banco de dados
+doceria.db
+
+# Comprovantes de pagamento
+comprovantes/
+
+# Arquivos temporários
+__pycache__/
+*.pyc
