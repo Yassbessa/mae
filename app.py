@@ -562,9 +562,8 @@ if st.button("Finalizar Pedido", type="primary"):
     conn.commit()
 
        # -------- MENSAGEM WHATSAPP --------
-    nome = u["nome"]
-        
-        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+        nome = u["nome"]
+            msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
         
         for produto, qtd in itens:
             msg += f"▪️ {qtd}x {produto}\n"
