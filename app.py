@@ -22,7 +22,7 @@ PRODUTOS = {
                               "Pudim de Leite", "Açaí Cremoso", "Coco Cremoso"],
     "🍹 Alcoólicos (+18)": ["Piña Colada", "Sex on the Beach", "Caipirinha",
                             "Batida de Maracujá", "Batida de Morango"],
-    "🥧 Salgados e Doces": ["Empadão Frango P", "Empadão Frango G", "Crunch Cake"]
+    "🥧 Salgados e Doces": ["Empadão Frango P (220mL)", "Empadão Frango G (500mL)", "Crunch Cake (180g)"]
 }
 
 # ================= ESTOQUE =================
