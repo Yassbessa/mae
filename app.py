@@ -418,11 +418,10 @@ elif st.session_state.etapa == "cardapio":
         msg = (
             f"🍦 Pedido de {u['nome']}\n"
             f"📍 {detalhe_entrega}\n"
-            f"💳 {forma_pgto}\n"
-            f"📦 Status: {status_pagamento}\n\n"
+            f"💳 {forma_pgto}\n\n"
             f"{lista_txt}\n\n"
             f"💰 Total: R$ {total:.2f}\n\n"
-            f"📸 Comprovante enviado pelo app."
+            f"📎 Comprovante disponível no sistema."
         )
 
         link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
