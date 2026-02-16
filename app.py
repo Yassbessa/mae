@@ -50,20 +50,32 @@ FOTOS = {
 conn = sqlite3.connect('doceria.db', check_same_thread=False)
 c = conn.cursor()
 
-# ===== ATUALIZAÇÃO SEGURA DO BANCO =====
+# ===== CRIA TABELAS SE NÃO EXISTIREM =====
 
-# adiciona tipo_cliente na tabela usuarios
-try:
-    c.execute("ALTER TABLE usuarios ADD COLUMN tipo_cliente TEXT")
-except:
-    pass
+c.execute('''
+CREATE TABLE IF NOT EXISTS usuarios (
+    nome TEXT,
+    email TEXT PRIMARY KEY,
+    senha TEXT,
+    endereco TEXT,
+    nascimento TEXT,
+    instrucoes TEXT,
+    tipo_cliente TEXT
+)
+''')
 
-# adiciona colunas novas na tabela vendas
-for coluna in ["cliente_email", "categoria", "cupom"]:
-    try:
-        c.execute(f"ALTER TABLE vendas ADD COLUMN {coluna} TEXT")
-    except:
-        pass
+c.execute('''
+CREATE TABLE IF NOT EXISTS vendas (
+    data TEXT,
+    cliente_email TEXT,
+    item TEXT,
+    categoria TEXT,
+    qtd INTEGER,
+    total REAL,
+    cupom TEXT,
+    status_pagamento TEXT
+)
+''')
 
 conn.commit()
 
