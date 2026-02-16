@@ -151,73 +151,77 @@ elif st.session_state.etapa == "login":
         st.rerun()
         
 # =============== ADMIN =====================
-
 elif st.session_state.etapa == "painel_admin":
     st.title("👑 Painel Admin - Ja Que É Doce")
-    
-    if st.button("⬅️ Sair do Painel"):
-        st.session_state.etapa = "boas_vindas"; st.rerun()
 
-    # Puxando os dados atualizados
+    if st.button("⬅️ Sair do Painel"):
+        st.session_state.etapa = "boas_vindas"
+        st.rerun()
+
+    # ----- DADOS -----
     df_vendas = pd.read_sql_query("SELECT * FROM vendas", conn)
-    df_users = pd.read_sql_query("SELECT nome, email, end, instrucoes FROM usuarios", conn)
+    df_users = pd.read_sql_query("SELECT nome, email, endereco, tipo_cliente FROM usuarios", conn)
 
     if not df_vendas.empty:
-        # --- 1. FILTRO DE PÚBLICO (MORADORES VS EXTERNOS) ---
+
+        # 🔗 Junta vendas com usuários
+        df = df_vendas.merge(df_users, left_on="cliente_email", right_on="email", how="left")
+
+        # --- 1. PERFIL DE VENDAS ---
         st.subheader("👥 Perfil de Vendas")
-        col_m1, col_m2 = st.columns(2)
-        
-        vendas_morador = df_vendas[df_vendas['tipo_cliente'] == 'Morador']['total'].sum()
-        vendas_externo = df_vendas[df_vendas['tipo_cliente'] == 'Externo']['total'].sum()
-        
-        col_m1.metric("Faturamento Moradores", f"R$ {vendas_morador:.2f}")
-        col_m2.metric("Faturamento Externo", f"R$ {vendas_externo:.2f}")
+
+        col1, col2 = st.columns(2)
+
+        vendas_morador = df[df["tipo_cliente"] == "Morador"]["total"].sum()
+        vendas_externo = df[df["tipo_cliente"] == "Externo"]["total"].sum()
+
+        col1.metric("Faturamento Moradores", f"R$ {vendas_morador:.2f}")
+        col2.metric("Faturamento Externos", f"R$ {vendas_externo:.2f}")
 
         st.divider()
 
-        # --- 2. RANKING DE PRODUTOS (O QUE MAIS SAIU) ---
+        # --- 2. RANKING DE PRODUTOS ---
         st.subheader("🏆 Sabores Campeões")
-        ranking_sabores = df_vendas.groupby("sabor")["qtd"].sum().sort_values(ascending=False)
-        st.bar_chart(ranking_sabores)
+
+        ranking = df.groupby("item")["qtd"].sum().sort_values(ascending=False)
+        st.bar_chart(ranking)
 
         st.divider()
 
-        # --- 3. INTELIGÊNCIA DE MARKETING (O QUE CADA UM AMA) ---
-        st.subheader("🎯 Radar de Marketing: Quem ama o quê?")
-        st.write("Use essas frases para vender mais no WhatsApp!")
+        # --- 3. RADAR DE MARKETING ---
+        st.subheader("🎯 Radar de Marketing")
 
-        # Agrupamos por cliente e sabor para ver a preferência individual
-        preferencia_cliente = df_vendas.groupby(['cliente', 'end', 'sabor'])['qtd'].sum().reset_index()
-        # Pegamos o sabor mais comprado de cada cliente
-        top_sabores = preferencia_cliente.sort_values('qtd', ascending=False).drop_duplicates('cliente')
+        preferencia = (
+            df.groupby(["cliente_email", "nome", "item"])["qtd"]
+            .sum()
+            .reset_index()
+        )
 
-        for _, row in top_sabores.iterrows():
-            cliente_nome = row['cliente']
-            sabor_favorito = row['sabor']
-            local = row['end']
-            
-            # Gerando a frase personalizada
-            frase_marketing = f"Olá {cliente_nome.split()[0]}, percebemos que você adorou nosso {sabor_favorito}! Que tal aproveitar um hoje?"
-            
-            with st.expander(f"👤 {cliente_nome} ({local})"):
-                st.write(f"💖 **Item favorito:** {sabor_favorito}")
-                st.write(f"📝 **Frase Sugerida:**")
-                st.code(frase_marketing) # Deixa fácil para copiar e colar
-                st.button("Copiar Frase", key=f"btn_{cliente_nome}")
+        top = preferencia.sort_values("qtd", ascending=False).drop_duplicates("cliente_email")
+
+        for _, row in top.iterrows():
+            nome_cliente = row["nome"]
+            favorito = row["item"]
+
+            frase = f"Olá {nome_cliente.split()[0]}, percebemos que você adorou nosso {favorito}! 😍"
+
+            with st.expander(f"👤 {nome_cliente}"):
+                st.write(f"💖 Favorito: {favorito}")
+                st.code(frase)
 
         st.divider()
 
         # --- 4. TABELAS DETALHADAS ---
-        tab_v, tab_u = st.tabs(["📊 Histórico de Vendas", "👥 Base de Usuários"])
-        
-        with tab_v:
+        tab1, tab2 = st.tabs(["📊 Histórico de Vendas", "👥 Usuários"])
+
+        with tab1:
             st.dataframe(df_vendas, use_container_width=True)
-        
-        with tab_u:
+
+        with tab2:
             st.dataframe(df_users, use_container_width=True)
 
     else:
-        st.info("Ainda não temos vendas registradas para gerar inteligência.")
+        st.info("Ainda não temos vendas regist
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
