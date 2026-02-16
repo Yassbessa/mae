@@ -13,7 +13,7 @@ CHAVE_PIX = "30.615.725 000155"
 EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
 
 ADMIN_USER = "admin"
-ADMIN_PASS = "jqd9191"
+ADMIN_PASS = "SENHA_ADMIN"
 
 # ================= PRODUTOS =================
 PRODUTOS = {
@@ -150,28 +150,74 @@ elif st.session_state.etapa == "login":
         st.session_state.etapa = "boas_vindas"
         st.rerun()
         
-# ================= ADMIN =================
-elif st.session_state.etapa == "admin":
-    st.title("Painel Admin 🐝")
+# =============== ADMIN =====================
 
-    if st.button("Sair do admin"):
-        st.session_state.etapa = "boas_vindas"
-        st.rerun()
+elif st.session_state.etapa == "painel_admin":
+    st.title("👑 Painel Admin - Ja Que É Doce")
+    
+    if st.button("⬅️ Sair do Painel"):
+        st.session_state.etapa = "boas_vindas"; st.rerun()
 
-    # ---- ESTOQUE ----
-    st.subheader("📦 Estoque")
-    for produto, qtd in ESTOQUE.items():
-        st.write(f"{produto}: {qtd}")
-
-    # ---- USUÁRIOS ----
-    st.subheader("👥 Usuários")
-    df_users = pd.read_sql_query("SELECT nome, email, tipo_cliente FROM usuarios", conn)
-    st.dataframe(df_users)
-
-    # ---- VENDAS ----
-    st.subheader("📊 Vendas")
+    # Puxando os dados atualizados
     df_vendas = pd.read_sql_query("SELECT * FROM vendas", conn)
-    st.dataframe(df_vendas)
+    df_users = pd.read_sql_query("SELECT nome, email, end, instrucoes FROM usuarios", conn)
+
+    if not df_vendas.empty:
+        # --- 1. FILTRO DE PÚBLICO (MORADORES VS EXTERNOS) ---
+        st.subheader("👥 Perfil de Vendas")
+        col_m1, col_m2 = st.columns(2)
+        
+        vendas_morador = df_vendas[df_vendas['tipo_cliente'] == 'Morador']['total'].sum()
+        vendas_externo = df_vendas[df_vendas['tipo_cliente'] == 'Externo']['total'].sum()
+        
+        col_m1.metric("Faturamento Moradores", f"R$ {vendas_morador:.2f}")
+        col_m2.metric("Faturamento Externo", f"R$ {vendas_externo:.2f}")
+
+        st.divider()
+
+        # --- 2. RANKING DE PRODUTOS (O QUE MAIS SAIU) ---
+        st.subheader("🏆 Sabores Campeões")
+        ranking_sabores = df_vendas.groupby("sabor")["qtd"].sum().sort_values(ascending=False)
+        st.bar_chart(ranking_sabores)
+
+        st.divider()
+
+        # --- 3. INTELIGÊNCIA DE MARKETING (O QUE CADA UM AMA) ---
+        st.subheader("🎯 Radar de Marketing: Quem ama o quê?")
+        st.write("Use essas frases para vender mais no WhatsApp!")
+
+        # Agrupamos por cliente e sabor para ver a preferência individual
+        preferencia_cliente = df_vendas.groupby(['cliente', 'end', 'sabor'])['qtd'].sum().reset_index()
+        # Pegamos o sabor mais comprado de cada cliente
+        top_sabores = preferencia_cliente.sort_values('qtd', ascending=False).drop_duplicates('cliente')
+
+        for _, row in top_sabores.iterrows():
+            cliente_nome = row['cliente']
+            sabor_favorito = row['sabor']
+            local = row['end']
+            
+            # Gerando a frase personalizada
+            frase_marketing = f"Olá {cliente_nome.split()[0]}, percebemos que você adorou nosso {sabor_favorito}! Que tal aproveitar um hoje?"
+            
+            with st.expander(f"👤 {cliente_nome} ({local})"):
+                st.write(f"💖 **Item favorito:** {sabor_favorito}")
+                st.write(f"📝 **Frase Sugerida:**")
+                st.code(frase_marketing) # Deixa fácil para copiar e colar
+                st.button("Copiar Frase", key=f"btn_{cliente_nome}")
+
+        st.divider()
+
+        # --- 4. TABELAS DETALHADAS ---
+        tab_v, tab_u = st.tabs(["📊 Histórico de Vendas", "👥 Base de Usuários"])
+        
+        with tab_v:
+            st.dataframe(df_vendas, use_container_width=True)
+        
+        with tab_u:
+            st.dataframe(df_users, use_container_width=True)
+
+    else:
+        st.info("Ainda não temos vendas registradas para gerar inteligência.")
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
