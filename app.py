@@ -158,15 +158,20 @@ elif st.session_state.etapa == "admin":
         st.session_state.etapa = "boas_vindas"
         st.rerun()
 
-    st.subheader("📦 Estoque atual")
-
+    # ---- ESTOQUE ----
+    st.subheader("📦 Estoque")
     for produto, qtd in ESTOQUE.items():
         st.write(f"{produto}: {qtd}")
 
-    st.subheader("📊 Vendas registradas")
+    # ---- USUÁRIOS ----
+    st.subheader("👥 Usuários")
+    df_users = pd.read_sql_query("SELECT nome, email, tipo_cliente FROM usuarios", conn)
+    st.dataframe(df_users)
 
-    df = pd.read_sql_query("SELECT * FROM vendas", conn)
-    st.dataframe(df)
+    # ---- VENDAS ----
+    st.subheader("📊 Vendas")
+    df_vendas = pd.read_sql_query("SELECT * FROM vendas", conn)
+    st.dataframe(df_vendas)
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
