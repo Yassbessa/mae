@@ -64,9 +64,9 @@ ESTOQUE = {
     "Açaí Cremoso": 4, "Coco Cremoso": 6,
     "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
     "Batida de Maracujá": 2, "Batida de Morango": 1,
-    "Empadão Frango P": 4,
-    "Empadão Frango G": 0,
-    "Crunch Cake": 2
+    "Empadão Frango P (220mL)": 4,
+    "Empadão Frango G (500mL)": 0,
+    "Crunch Cake (180g)": 2
 }
 
 # ================= FOTOS =================
