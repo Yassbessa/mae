@@ -221,7 +221,7 @@ elif st.session_state.etapa == "painel_admin":
             st.dataframe(df_users, use_container_width=True)
 
     else:
-        st.info("Ainda não temos vendas regist
+        st.info("Ainda não temos vendas registo.")
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
