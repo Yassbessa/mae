@@ -331,79 +331,80 @@ elif st.session_state.etapa == "cardapio":
             detalhe_entrega = f"{endereco} | Recebe: {quem_recebe} | Obs: {instrucoes}"
             destinatario = NUMERO_JAQUE
 
-       # -------- PAGAMENTO SEGURO --------
-st.header("💳 Pagamento")
-
-opcoes_pagamento = ["PIX", "Dinheiro"]
-
-if eh_garagem:
-    opcoes_pagamento.append("Acertar na garagem")
-
-forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
-
-comprovante = None
-
-if forma_pgto == "PIX":
-    st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
-    comprovante = st.file_uploader(
-        "Envie o comprovante do PIX",
-        type=["png", "jpg", "jpeg", "pdf"]
-    )
-
- # -------- FINALIZAR --------
-if st.button("Finalizar Pedido", type="primary"):
-    if not itens:
-        st.warning("Escolha ao menos um item")
-        st.stop()
-
-    # 🔒 exige comprovante para PIX
-    if forma_pgto == "PIX" and comprovante is None:
-        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
-        st.stop()
-
-    import os  # coloque no topo do arquivo uma vez
-
-# 💾 salva comprovante
-caminho_comprovante = ""
-
-if comprovante is not None:
-    pasta = "comprovantes"
-    os.makedirs(pasta, exist_ok=True)  # cria pasta se não existir
-
-    caminho_comprovante = os.path.join(pasta, comprovante.name)
-
-    with open(caminho_comprovante, "wb") as f:
-        f.write(comprovante.getbuffer())
 
 
-    # define status do pagamento
-    status_pagamento = "Pago" if forma_pgto == "PIX" else "Pendente"
 
-    for produto, qtd in itens:
-        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+           # -------- PAGAMENTO SEGURO --------
+    st.header("💳 Pagamento")
 
-        c.execute("""
-            INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
-            VALUES (?,?,?,?,?,?,?,?)
-        """,
-        (datetime.now().strftime("%d/%m %H:%M"),
-         u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
+    opcoes_pagamento = ["PIX", "Dinheiro"]
 
-    conn.commit()
+    if eh_garagem:
+        opcoes_pagamento.append("Acertar na garagem")
 
-    lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+    forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
 
-    msg = (
-        f"🍦 Pedido de {u['nome']}\n"
-        f"📍 {detalhe_entrega}\n"
-        f"💳 {forma_pgto}\n"
-        f"📦 Status: {status_pagamento}\n\n"
-        f"{lista_txt}\n\n"
-        f"💰 Total: R$ {total:.2f}\n\n"
-        f"📸 Comprovante enviado pelo app."
-    )
+    comprovante = None
 
-    link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+    if forma_pgto == "PIX":
+        st.success(f"🔑 Chave PIX: {CHAVE_PIX}")
+        comprovante = st.file_uploader(
+            "Envie o comprovante do PIX",
+            type=["png", "jpg", "jpeg", "pdf"]
+        )
 
-    st.success("Pedido registrado com segurança!")
-    st.link_button("Enviar pedido no WhatsApp", link)
+    # -------- FINALIZAR --------
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+            st.stop()
+
+        # 🔒 exige comprovante para PIX
+        if forma_pgto == "PIX" and comprovante is None:
+            st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+            st.stop()
+
+        # 💾 salva comprovante
+        import os
+
+        caminho_comprovante = ""
+        if comprovante is not None:
+            pasta = "comprovantes"
+            os.makedirs(pasta, exist_ok=True)
+
+            caminho_comprovante = os.path.join(pasta, comprovante.name)
+
+            with open(caminho_comprovante, "wb") as f:
+                f.write(comprovante.getbuffer())
+
+        # define status do pagamento
+        status_pagamento = "Pago" if forma_pgto == "PIX" else "Pendente"
+
+        for produto, qtd in itens:
+            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+
+            c.execute("""
+                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
+                VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (datetime.now().strftime("%d/%m %H:%M"),
+             u["email"], produto, categoria, qtd, total, cupom, status_pagamento))
+
+        conn.commit()
+
+        lista_txt = "\n".join([f"{qtd}x {prod}" for prod, qtd in itens])
+
+        msg = (
+            f"🍦 Pedido de {u['nome']}\n"
+            f"📍 {detalhe_entrega}\n"
+            f"💳 {forma_pgto}\n"
+            f"📦 Status: {status_pagamento}\n\n"
+            f"{lista_txt}\n\n"
+            f"💰 Total: R$ {total:.2f}\n\n"
+            f"📸 Comprovante enviado pelo app."
+        )
+
+        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+        st.success("Pedido registrado com segurança!")
+        st.link_button("Enviar pedido no WhatsApp", link)
