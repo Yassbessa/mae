@@ -42,7 +42,7 @@ ESTOQUE = {
 # ================= FOTOS =================
 FOTOS = {
     "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
-    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
     "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
 }
 
