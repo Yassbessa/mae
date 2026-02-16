@@ -17,10 +17,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS vendas
 conn.commit()
 
 # --- DADOS DO NEGÓCIO ---
-NUMERO_YASMIN = "5521981816105" 
 NUMERO_JAQUE = "5521976141210" 
 CHAVE_PIX = "30.615.725 000155" 
-EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
 ADMIN_USER = "admin"
 ADMIN_PASS = "jqd9191"
 
@@ -39,7 +37,7 @@ if st.session_state.etapa == "boas_vindas":
         st.session_state.etapa = "cadastro"; st.rerun()
 
 # ==========================================
-# TELA 2: CADASTRO (DIRETO PRO LOGIN)
+# TELA 2: CADASTRO -> LOGIN
 # ==========================================
 elif st.session_state.etapa == "cadastro":
     st.title("📝 Cadastro")
@@ -55,9 +53,10 @@ elif st.session_state.etapa == "cadastro":
                 try:
                     c.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?)", (n_nome, n_email.lower(), n_pass, n_end, n_nasc, n_inst))
                     conn.commit()
-                    st.success("Conta criada! Vamos para o login...")
+                    st.success("Conta criada! Redirecionando...")
                     st.session_state.etapa = "login"; st.rerun()
                 except: st.error("E-mail já cadastrado!")
+            else: st.error("Preencha os campos obrigatórios!")
     if st.button("⬅️ Voltar"): st.session_state.etapa = "boas_vindas"; st.rerun()
 
 # ==========================================
@@ -87,12 +86,14 @@ elif st.session_state.etapa == "cardapio":
     
     st.title(f"Olá, {u['nome']}! 🍦")
     
-    # --- CUPONS ---
     cupom = st.text_input("Cupom de Desconto:").strip().upper()
     metodo_pgto = "PIX / Dinheiro"
     eh_85 = (cupom == "MACHADORIBEIRO" and "85" in u['end'])
     eh_niver = (cupom == "NIVERDOCE" and datetime.now().strftime("%d/%m") == u['nasc'])
-    if cupom == "GARAGEMLOLA": metodo_pgto = "GARAGEM LOLA (Acerto Posterior)"
+    
+    if cupom == "GARAGEMLOLA":
+        metodo_pgto = "GARAGEM LOLA (Pagamento Posterior)"
+        st.warning("⚠️ Cupom GARAGEMLOLA: O valor será avisado à Jaqueline para acerto posterior.")
 
     p_f = 5.0 if eh_85 else (4.0 if eh_niver else 8.0)
     p_g = 7.0 if eh_85 else (6.0 if eh_niver else 9.0)
@@ -101,12 +102,11 @@ elif st.session_state.etapa == "cardapio":
     total_bruto = 0.0
     pedido_itens = []
 
-    # --- TODOS OS PRODUTOS DO SEU ESTOQUE ---
-    estoque_full = {
+    # --- SACOLÉS ---
+    estoque_sacoles = {
         "❄️ Frutas (R$ {:.2f})".format(p_f): [
-            {"item": "Goiaba", "p": p_f, "est": 4}, {"item": "Uva", "p": p_f, "est": 0},
-            {"item": "Manga", "p": p_f, "est": 4}, {"item": "Abacaxi c/ Hortelã", "p": p_f, "est": 1},
-            {"item": "Frutopia", "p": p_f, "est": 3}
+            {"item": "Goiaba", "p": p_f, "est": 4}, {"item": "Manga", "p": p_f, "est": 4},
+            {"item": "Abacaxi c/ Hortelã", "p": p_f, "est": 1}, {"item": "Frutopia", "p": p_f, "est": 3}
         ],
         "🍦 Gourmet (R$ {:.2f})".format(p_g): [
             {"item": "Ninho c/ Nutella", "p": p_g, "est": 5}, {"item": "Ninho c/ Morango", "p": p_g, "est": 4},
@@ -118,7 +118,7 @@ elif st.session_state.etapa == "cardapio":
         ]
     }
 
-    for cat, itens in estoque_full.items():
+    for cat, itens in estoque_sacoles.items():
         with st.expander(cat, expanded=True):
             for i in itens:
                 c1, c2, c3 = st.columns([3, 1, 1])
@@ -129,38 +129,53 @@ elif st.session_state.etapa == "cardapio":
                     if q > 0:
                         total_bruto += (q * i['p'])
                         pedido_itens.append(f"{q}x {i['item']}")
-                        c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?,?)", (datetime.now().strftime("%d/%m %H:%M"), u['nome'], u['end'], i['item'], q, q*i['p'], metodo_pgto))
                 else: c3.write("❌")
 
-    # --- SALGADOS E DOCES ---
+    # --- SALGADOS E DOCES (FIXADO!) ---
     st.header("🥧 Salgados e Doces")
+    
+    # Empadão
     col_e1, col_e2 = st.columns([1, 1.5])
     with col_e1: st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg")
     with col_e2:
-        q_p = st.number_input("Empadão Frango P (R$ 12,00)", 0, 5)
-        if q_p > 0: 
+        st.write("**Empadão de Frango**")
+        q_p = st.number_input("Pequeno (R$ 12,00)", 0, 5, key="q_emp_p")
+        q_g = st.number_input("Grande (R$ 18,00)", 0, 0, key="q_emp_g") # Estoque 0
+        if q_p > 0:
             total_bruto += (q_p * 12.0)
-            pedido_itens.append(f"{q_p}x Empadão P")
+            pedido_itens.append(f"{q_p}x Empadão Frango P")
+        if q_g > 0:
+            total_bruto += (q_g * 18.0)
+            pedido_itens.append(f"{q_g}x Empadão Frango G")
 
+    # Bolo
     col_b1, col_b2 = st.columns([1, 1.5])
     with col_b1: st.image("https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg")
     with col_b2:
-        q_b = st.number_input("Crunch Cake (R$ 10,00)", 0, 4)
-        if q_b > 0: 
+        st.write("**Crunch Cake (Pote)**")
+        q_b = st.number_input("Qtd (R$ 10,00)", 0, 4, key="q_bolo")
+        if q_b > 0:
             total_bruto += (q_b * 10.0)
             pedido_itens.append(f"{q_b}x Crunch Cake")
 
     if total_bruto > 0:
         st.divider()
-        st.markdown(f"## Total: R$ {total_bruto:.2f}")
-        op = st.radio("Entrega:", ["Entregar agora", "Vou buscar no 902", "Agendar"])
+        st.markdown(f"## Total Final: R$ {total_bruto:.2f}")
+        op = st.radio("Como prefere?", ["Entregar agora", "Vou buscar no 902", "Agendar"])
+        
         if st.button("🚀 FINALIZAR PEDIDO", type="primary"):
+            # Salva cada item da venda no banco para o Admin ver
+            for item in pedido_itens:
+                c.execute("INSERT INTO vendas VALUES (?,?,?,?,?,?,?)", 
+                          (datetime.now().strftime("%d/%m %H:%M"), u['nome'], u['end'], item, 1, total_bruto, metodo_pgto))
             conn.commit()
+            
+            # Zap com todos os detalhes
             msg = f"🍦 *NOVO PEDIDO*\n👤 {u['nome']}\n📍 {u['end']}\n💬 {op}\n📦 {', '.join(pedido_itens)}\n💰 Total: R$ {total_bruto:.2f}\n💳 PGTO: {metodo_pgto}"
             st.markdown(f'<meta http-equiv="refresh" content="0;URL=\'https://wa.me/{NUMERO_JAQUE}?text={urllib.parse.quote(msg)}\' /">', unsafe_allow_html=True)
 
 # ==========================================
-# TELA 5: PAINEL ADMIN
+# TELA 5: PAINEL ADMIN (INTELIGÊNCIA)
 # ==========================================
 elif st.session_state.etapa == "painel_admin":
     st.title("👑 Painel Admin")
