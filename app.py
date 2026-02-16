@@ -3,17 +3,24 @@ import sqlite3
 import urllib.parse
 from datetime import datetime
 import pandas as pd
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+ADMIN_USER = os.getenv("ADMIN_USER")
+ADMIN_PASS = os.getenv("ADMIN_PASS")
+
+NUMERO_YASMIN = os.getenv("NUMERO_YASMIN")
+NUMERO_JAQUE = os.getenv("NUMERO_JAQUE")
+CHAVE_PIX = os.getenv("CHAVE_PIX")
+
+CUPOM_MORADOR = os.getenv("CUPOM_MORADOR")
+CUPOM_GARAGEM = os.getenv("CUPOM_GARAGEM")
 
 # ================= CONFIG =================
 st.set_page_config(page_title="Ja Que É Doce", page_icon="🐝", layout="centered")
 
-NUMERO_YASMIN = "5521981816105"
-NUMERO_JAQUE = "5521976141210"
-CHAVE_PIX = "30.615.725 000155"
-EMAIL_COMPROVANTE = "jaqueedoce@gmail.com"
-
-ADMIN_USER = "admin"
-ADMIN_PASS = "jqd9191"
 
 # ================= PRODUTOS =================
 PRODUTOS = {
@@ -254,15 +261,16 @@ elif st.session_state.etapa == "cardapio":
 
     st.title(f"Olá, {u['nome']} 🍦")
 
-    # -------- CUPONS --------
-    cupom = st.text_input("Possui cupom?").upper()
-    eh_morador = "MACHADORIBEIRO" in cupom
-    eh_garagem = "GARAGEMLOLA" in cupom
-    eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
+  # -------- CUPONS --------
+cupom = st.text_input("Possui cupom?").upper()
 
-    total = 0
-    itens = []
-    precos_para_brinde = []
+eh_morador = CUPOM_MORADOR and CUPOM_MORADOR in cupom
+eh_garagem = CUPOM_GARAGEM and CUPOM_GARAGEM in cupom
+eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
+
+total = 0
+itens = []
+precos_para_brinde = []
 
          # -------- PREÇOS --------
 
