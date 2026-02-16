@@ -41,9 +41,9 @@ ESTOQUE = {
 
 # ================= FOTOS =================
 FOTOS = {
-    "Empadão Frango P": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
-    "Empadão Frango G": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
-    "Crunch Cake": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
+    "Empadão Frango P (220mL)": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadao.jpeg",
+    "Empadão Frango G (500mL)": "https://raw.githubusercontent.com/Yassbessa/mae/main/empadão2.jpeg",
+    "Crunch Cake (180g)": "https://raw.githubusercontent.com/Yassbessa/mae/main/bolo.jpeg"
 }
 
 # ================= BANCO =================
