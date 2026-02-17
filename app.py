@@ -254,19 +254,35 @@ elif st.session_state.etapa == "painel_admin":
         st.info("Ainda não temos vendas registradas.")
         st.stop()
 
-    # ===== MONTA DATAFRAME PRINCIPAL =====
+      # ===== MONTA DATAFRAME =====
     df = df_vendas.copy()
-    
-    # se já existir cliente_nome (novo sistema)
+
+    # garante coluna nome
+    df["nome"] = None
+
+    # 1. usa cliente_nome se existir
     if "cliente_nome" in df.columns:
         df["nome"] = df["cliente_nome"]
-    
-    # fallback para vendas antigas
-    if "nome" not in df.columns or df["nome"].isna().any():
-        df = df.merge(df_users, left_on="cliente_email", right_on="email", how="left")
-    
-    # substitui nomes faltantes
+
+    # 2. merge para buscar nome e tipo_cliente do usuário
+    df = df.merge(
+        df_users[["email", "nome", "tipo_cliente"]],
+        left_on="cliente_email",
+        right_on="email",
+        how="left",
+        suffixes=("", "_user")
+    )
+
+    # 3. preenche nomes faltantes com dados do usuário
+    if "nome_user" in df.columns:
+        df["nome"] = df["nome"].fillna(df["nome_user"])
+
+    # 4. fallback final
     df["nome"] = df["nome"].fillna("Cliente não identificado")
+
+    # 5. garante tipo_cliente
+    df["tipo_cliente"] = df["tipo_cliente"].fillna("Externo")
+
 
     # ---------- CORREÇÃO DE DATA ----------
     df["data_dt"] = pd.to_datetime(df["data"], format="%d/%m %H:%M", errors="coerce")
