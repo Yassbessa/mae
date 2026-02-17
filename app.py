@@ -593,7 +593,7 @@ elif st.session_state.etapa == "cardapio":
             detalhe_entrega += f" às {horario_agendado}"
 
 
-                  # -------- PAGAMENTO --------
+        # -------- PAGAMENTO --------
     st.header("💳 Pagamento")
 
     opcoes_pagamento = ["PIX", "Dinheiro"]
@@ -605,6 +605,16 @@ elif st.session_state.etapa == "cardapio":
         opcoes_pagamento.append("Acertar na garagem")
 
     forma_pgto = st.radio("Forma de pagamento:", opcoes_pagamento)
+
+    # 🔒 garante que a variável sempre exista
+    comprovante = None
+
+    if forma_pgto == "PIX":
+        st.success("🔑 Chave PIX: 30.615.725 000155")
+        comprovante = st.file_uploader(
+            "Envie o comprovante do PIX",
+            type=["png", "jpg", "jpeg", "pdf"]
+        )
 
     # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
@@ -645,6 +655,8 @@ elif st.session_state.etapa == "cardapio":
             status_pagamento = "Comprovante enviado"
         elif forma_pgto == "Dinheiro":
             status_pagamento = "Pagamento na entrega"
+        elif forma_pgto == "Pagar depois":
+            status_pagamento = "Fiado"
 
         # ===== SALVA NO BANCO =====
         for produto, qtd in itens:
