@@ -565,104 +565,109 @@ elif st.session_state.etapa == "cardapio":
         )
 
 
-    # -------- FINALIZAR --------
+        # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
         if not itens:
             st.warning("Escolha ao menos um item")
             st.stop()
-    
+
         # 🔒 exige comprovante para PIX
         if forma_pgto == "PIX" and comprovante is None:
             st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
             st.stop()
-    
+
         # 💾 salva comprovante
         caminho_comprovante = ""
         if comprovante is not None:
             pasta = "comprovantes"
             os.makedirs(pasta, exist_ok=True)
-    
+
             nome_arquivo = f"{datetime.now().timestamp()}_{comprovante.name}"
             caminho_comprovante = os.path.join(pasta, nome_arquivo)
-    
+
             with open(caminho_comprovante, "wb") as f:
                 f.write(comprovante.getbuffer())
 
-    # ===== STATUS DO PAGAMENTO =====
-    status_pagamento = "Pendente"
+        # ===== STATUS DO PAGAMENTO =====
+        status_pagamento = "Pendente"
 
-    if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
-        valor_pdf = extrair_dados_pix(caminho_comprovante)
+        if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
+            valor_pdf = extrair_dados_pix(caminho_comprovante)
 
-        if valor_pdf:
-            try:
-                valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
-                if abs(valor_pdf_float - total) < 0.01:
-                    status_pagamento = "Pago Confirmado"
-                else:
-                    status_pagamento = "⚠️ Valor Divergente"
-            except:
-                status_pagamento = "Erro ao ler valor"
-        else:
-            status_pagamento = "Valor não encontrado"
+            if valor_pdf:
+                try:
+                    valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
+                    if abs(valor_pdf_float - total) < 0.01:
+                        status_pagamento = "Pago Confirmado"
+                    else:
+                        status_pagamento = "⚠️ Valor Divergente"
+                except:
+                    status_pagamento = "Erro ao ler valor"
+            else:
+                status_pagamento = "Valor não encontrado"
 
-    elif forma_pgto == "PIX":
-        status_pagamento = "Comprovante enviado"
+        elif forma_pgto == "PIX":
+            status_pagamento = "Comprovante enviado"
 
-    elif forma_pgto == "Dinheiro":
-        status_pagamento = "Pagamento na entrega"
+        elif forma_pgto == "Dinheiro":
+            status_pagamento = "Pagamento na entrega"
 
-    # ===== SALVA NO BANCO =====
-    for produto, qtd in itens:
-        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+        # ===== SALVA NO BANCO =====
+        for produto, qtd in itens:
+            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-        if eh_morador:
-            preco_unit = PRECOS[categoria]["morador"]
-        else:
-            preco_unit = PRECOS[categoria]["normal"]
+            if eh_morador:
+                preco_unit = PRECOS[categoria]["morador"]
+            else:
+                preco_unit = PRECOS[categoria]["normal"]
 
-        total_item = preco_unit * qtd
+            total_item = preco_unit * qtd
 
-        c.execute("""
-            INSERT INTO vendas 
-            (data, cliente_email, cliente_nome, item, categoria, qtd, total, cupom, status_pagamento, comprovante_path)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
-        """,
-        (
-            datetime.now().strftime("%d/%m %H:%M"),
-            u["email"],
-            u["nome"],
-            produto,
-            categoria,
-            qtd,
-            total_item,
-            cupom,
-            status_pagamento,
-            caminho_comprovante
-        ))
+            c.execute("""
+                INSERT INTO vendas 
+                (data, cliente_email, cliente_nome, item, categoria, qtd, total, cupom, status_pagamento, comprovante_path)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                datetime.now().strftime("%d/%m %H:%M"),
+                u["email"],
+                u["nome"],
+                produto,
+                categoria,
+                qtd,
+                total_item,
+                cupom,
+                status_pagamento,
+                caminho_comprovante
+            ))
 
-    conn.commit()
+        conn.commit()
 
-    # ===== MENSAGEM WHATSAPP =====
-    nome = u["nome"]
+        # ===== MENSAGEM WHATSAPP =====
+        nome = u["nome"]
 
-    msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
 
-    for produto, qtd in itens:
-        msg += f"▪️ {qtd}x {produto}\n"
+        for produto, qtd in itens:
+            msg += f"▪️ {qtd}x {produto}\n"
 
-    msg += (
-        f"\nEntrega: {detalhe_entrega}"
-        f"\nPagamento: {forma_pgto}"
-        f"\nStatus: {status_pagamento}"
-        f"\n\n*Total: R$ {total:.2f}*"
-    )
-
-    if forma_pgto == "PIX":
         msg += (
-            "\n\nEnviei o comprovante pelo app."
-            "\nSe não aparecer para você, posso reenviar por aqui."
+            f"\nEntrega: {detalhe_entrega}"
+            f"\nPagamento: {forma_pgto}"
+            f"\nStatus: {status_pagamento}"
+            f"\n\n*Total: R$ {total:.2f}*"
         )
+
+        if forma_pgto == "PIX":
+            msg += (
+                "\n\nEnviei o comprovante pelo app."
+                "\nSe não aparecer para você, posso reenviar por aqui."
+            )
+
+        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+
+        st.success("Pedido registrado com segurança!")
+        st.link_button("Enviar pedido no WhatsApp", link)
 
     link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
