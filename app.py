@@ -444,14 +444,39 @@ elif st.session_state.etapa == "painel_admin":
                             file_name=os.path.basename(caminho)
                         )
 
-        # ---------- LIMPEZA ----------
-        st.subheader("🧹 Limpar vendas de teste")
-        if st.button("Excluir vendas com cliente vazio"):
-            c.execute("DELETE FROM vendas WHERE cliente_email IS NULL")
-            conn.commit()
-            st.success("Vendas de teste removidas!")
-            st.rerun()
+        # ---------- GERENCIAR VENDAS ----------
+        st.subheader("🧹 Gerenciar vendas")
 
+        # mostra tabela com índice
+        df_vendas_view = df.reset_index()
+
+        st.write("Selecione as linhas que deseja excluir:")
+
+        linhas_para_excluir = st.multiselect(
+            "Escolha pelo índice:",
+            options=df_vendas_view["index"],
+            format_func=lambda x: f"Linha {x} • {df_vendas_view.loc[x, 'nome']} • {df_vendas_view.loc[x, 'item']} • R$ {df_vendas_view.loc[x, 'total']:.2f}"
+        )
+
+        st.dataframe(df_vendas_view)
+
+        if st.button("Excluir linhas selecionadas"):
+            if not linhas_para_excluir:
+                st.warning("Nenhuma linha selecionada.")
+            else:
+                for idx in linhas_para_excluir:
+                    data = df_vendas_view.loc[idx, "data"]
+                    email = df_vendas_view.loc[idx, "cliente_email"]
+                    item = df_vendas_view.loc[idx, "item"]
+
+                    c.execute(
+                        "DELETE FROM vendas WHERE data=? AND cliente_email=? AND item=?",
+                        (data, email, item)
+                    )
+
+                conn.commit()
+                st.success("Linhas excluídas com sucesso!")
+                st.rerun()
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
