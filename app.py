@@ -566,52 +566,51 @@ elif st.session_state.etapa == "cardapio":
 
 
     # -------- FINALIZAR --------
-    if st.button("Finalizar Pedido", type="primary"):
-        if not itens:
-            st.warning("Escolha ao menos um item")
-            st.stop()
+if st.button("Finalizar Pedido", type="primary"):
+    if not itens:
+        st.warning("Escolha ao menos um item")
+        st.stop()
 
-        # 🔒 exige comprovante para PIX
-        if forma_pgto == "PIX" and comprovante is None:
-            st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
-            st.stop()
+    # 🔒 exige comprovante para PIX
+    if forma_pgto == "PIX" and comprovante is None:
+        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+        st.stop()
 
-        # 💾 salva comprovante
-        caminho_comprovante = ""
-        if comprovante is not None:
-            pasta = "comprovantes"
-            os.makedirs(pasta, exist_ok=True)
+    # 💾 salva comprovante
+    caminho_comprovante = ""
+    if comprovante is not None:
+        pasta = "comprovantes"
+        os.makedirs(pasta, exist_ok=True)
 
-            caminho_comprovante = os.path.join(pasta, comprovante.name)
+        nome_arquivo = f"{datetime.now().timestamp()}_{comprovante.name}"
+        caminho_comprovante = os.path.join(pasta, nome_arquivo)
 
-            with open(caminho_comprovante, "wb") as f:
-                f.write(comprovante.getbuffer())
+        with open(caminho_comprovante, "wb") as f:
+            f.write(comprovante.getbuffer())
 
-        # ===== STATUS DO PAGAMENTO =====
-        status_pagamento = "Pendente"
+    # ===== STATUS DO PAGAMENTO =====
+    status_pagamento = "Pendente"
 
-        if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
-            valor_pdf = extrair_dados_pix(caminho_comprovante)
+    if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
+        valor_pdf = extrair_dados_pix(caminho_comprovante)
 
-            if valor_pdf:
-                try:
-                    valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
-                    if abs(valor_pdf_float - total) < 0.01:
-                        status_pagamento = "Pago Confirmado"
-                    else:
-                        status_pagamento = "⚠️ Valor Divergente"
-                except:
-                    status_pagamento = "Erro ao ler valor"
-            else:
-                status_pagamento = "Valor não encontrado"
+        if valor_pdf:
+            try:
+                valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
+                if abs(valor_pdf_float - total) < 0.01:
+                    status_pagamento = "Pago Confirmado"
+                else:
+                    status_pagamento = "⚠️ Valor Divergente"
+            except:
+                status_pagamento = "Erro ao ler valor"
+        else:
+            status_pagamento = "Valor não encontrado"
 
-        elif forma_pgto == "PIX":
-            status_pagamento = "Comprovante enviado"
+    elif forma_pgto == "PIX":
+        status_pagamento = "Comprovante enviado"
 
-        elif forma_pgto == "Dinheiro":
-            status_pagamento = "Pagamento na entrega"
-
-    # salva comprovante, calcula status etc...
+    elif forma_pgto == "Dinheiro":
+        status_pagamento = "Pagamento na entrega"
 
     # ===== SALVA NO BANCO =====
     for produto, qtd in itens:
@@ -669,4 +668,3 @@ elif st.session_state.etapa == "cardapio":
 
     st.success("Pedido registrado com segurança!")
     st.link_button("Enviar pedido no WhatsApp", link)
-
