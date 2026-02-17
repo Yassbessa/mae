@@ -566,27 +566,27 @@ elif st.session_state.etapa == "cardapio":
 
 
     # -------- FINALIZAR --------
-if st.button("Finalizar Pedido", type="primary"):
-    if not itens:
-        st.warning("Escolha ao menos um item")
-        st.stop()
-
-    # 🔒 exige comprovante para PIX
-    if forma_pgto == "PIX" and comprovante is None:
-        st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
-        st.stop()
-
-    # 💾 salva comprovante
-    caminho_comprovante = ""
-    if comprovante is not None:
-        pasta = "comprovantes"
-        os.makedirs(pasta, exist_ok=True)
-
-        nome_arquivo = f"{datetime.now().timestamp()}_{comprovante.name}"
-        caminho_comprovante = os.path.join(pasta, nome_arquivo)
-
-        with open(caminho_comprovante, "wb") as f:
-            f.write(comprovante.getbuffer())
+    if st.button("Finalizar Pedido", type="primary"):
+        if not itens:
+            st.warning("Escolha ao menos um item")
+            st.stop()
+    
+        # 🔒 exige comprovante para PIX
+        if forma_pgto == "PIX" and comprovante is None:
+            st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
+            st.stop()
+    
+        # 💾 salva comprovante
+        caminho_comprovante = ""
+        if comprovante is not None:
+            pasta = "comprovantes"
+            os.makedirs(pasta, exist_ok=True)
+    
+            nome_arquivo = f"{datetime.now().timestamp()}_{comprovante.name}"
+            caminho_comprovante = os.path.join(pasta, nome_arquivo)
+    
+            with open(caminho_comprovante, "wb") as f:
+                f.write(comprovante.getbuffer())
 
     # ===== STATUS DO PAGAMENTO =====
     status_pagamento = "Pendente"
