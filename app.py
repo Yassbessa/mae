@@ -254,7 +254,8 @@ elif st.session_state.etapa == "painel_admin":
         st.info("Ainda não temos vendas registradas.")
         st.stop()
 
-      # ===== MONTA DATAFRAME =====
+      #     ===== MONTA DATAFRAME =====
+    
     df = df_vendas.copy()
 
     # garante coluna nome
@@ -527,14 +528,17 @@ elif st.session_state.etapa == "cardapio":
 
     st.markdown(f"## 💰 Total: R$ {total:.2f}")
 
-        # -------- ENTREGA --------
+            # -------- ENTREGA --------
     st.header("🚚 Entrega")
+
+    # valores padrão (evita NameError)
+    destinatario = NUMERO_JAQUE
+    detalhe_entrega = "Entrega não definida"
 
     with st.expander("Confirmar dados de entrega", expanded=True):
 
         nome_recebimento = st.text_input("Nome para recebimento", value=u["nome"])
 
-        # interface única para todos
         modo_entrega = st.radio(
             "Como prefere receber?",
             ["Entregar agora", "Agendar entrega", "Retirar no local"]
@@ -544,7 +548,6 @@ elif st.session_state.etapa == "cardapio":
         if modo_entrega == "Agendar entrega":
             horario_agendado = st.text_input("Horário desejado")
 
-        # dados específicos por tipo de cliente
         if eh_morador:
             apto = st.text_input("Apartamento", value=u["end"])
             detalhe_entrega = f"Apto {apto} | {modo_entrega}"
@@ -561,7 +564,7 @@ elif st.session_state.etapa == "cardapio":
             detalhe_entrega += f" às {horario_agendado}"
 
 
-           # -------- PAGAMENTO SEGURO --------
+               # -------- PAGAMENTO --------
     st.header("💳 Pagamento")
 
     opcoes_pagamento = ["PIX", "Dinheiro"]
@@ -574,42 +577,36 @@ elif st.session_state.etapa == "cardapio":
     comprovante = None
 
     if forma_pgto == "PIX":
-        st.success(f"🔑 Chave PIX: 30.615.725 000155")
+        st.success("🔑 Chave PIX: 30.615.725 000155")
         comprovante = st.file_uploader(
             "Envie o comprovante do PIX",
             type=["png", "jpg", "jpeg", "pdf"]
         )
 
-
-        # -------- FINALIZAR --------
+    # -------- FINALIZAR --------
     if st.button("Finalizar Pedido", type="primary"):
         if not itens:
             st.warning("Escolha ao menos um item")
             st.stop()
 
-        # 🔒 exige comprovante para PIX
         if forma_pgto == "PIX" and comprovante is None:
             st.error("⚠️ Envie o comprovante do PIX para finalizar o pedido.")
             st.stop()
 
-        # 💾 salva comprovante
         caminho_comprovante = ""
         if comprovante is not None:
             pasta = "comprovantes"
             os.makedirs(pasta, exist_ok=True)
-
             nome_arquivo = f"{datetime.now().timestamp()}_{comprovante.name}"
             caminho_comprovante = os.path.join(pasta, nome_arquivo)
 
             with open(caminho_comprovante, "wb") as f:
                 f.write(comprovante.getbuffer())
 
-        # ===== STATUS DO PAGAMENTO =====
         status_pagamento = "Pendente"
 
         if forma_pgto == "PIX" and caminho_comprovante.endswith(".pdf"):
             valor_pdf = extrair_dados_pix(caminho_comprovante)
-
             if valor_pdf:
                 try:
                     valor_pdf_float = float(valor_pdf.replace(".", "").replace(",", "."))
@@ -621,10 +618,8 @@ elif st.session_state.etapa == "cardapio":
                     status_pagamento = "Erro ao ler valor"
             else:
                 status_pagamento = "Valor não encontrado"
-
         elif forma_pgto == "PIX":
             status_pagamento = "Comprovante enviado"
-
         elif forma_pgto == "Dinheiro":
             status_pagamento = "Pagamento na entrega"
 
@@ -660,9 +655,7 @@ elif st.session_state.etapa == "cardapio":
         conn.commit()
 
         # ===== MENSAGEM WHATSAPP =====
-        nome = u["nome"]
-
-        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+        msg = f"Oi Jaque! Sou *{u['nome']}* e fiz meu pedido pelo app:\n\n"
 
         for produto, qtd in itens:
             msg += f"▪️ {qtd}x {produto}\n"
@@ -675,17 +668,12 @@ elif st.session_state.etapa == "cardapio":
         )
 
         if forma_pgto == "PIX":
-            msg += (
-                "\n\nEnviei o comprovante pelo app."
-                "\nSe não aparecer para você, posso reenviar por aqui."
-            )
+            msg += "\n\nEnviei o comprovante pelo app."
 
         link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
         st.success("Pedido registrado com segurança!")
         st.link_button("Enviar pedido no WhatsApp", link)
 
-    link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
-
-    st.success("Pedido registrado com segurança!")
-    st.link_button("Enviar pedido no WhatsApp", link)
+        st.success("Pedido registrado com segurança!")
+        st.link_button("Enviar pedido no WhatsApp", link)
