@@ -611,61 +611,62 @@ elif st.session_state.etapa == "cardapio":
         elif forma_pgto == "Dinheiro":
             status_pagamento = "Pagamento na entrega"
 
-       # ===== SALVA NO BANCO =====
-for produto, qtd in itens:
-    categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+    # salva comprovante, calcula status etc...
 
-    # calcula preço correto do item
-    if eh_morador:
-        preco_unit = PRECOS[categoria]["morador"]
-    else:
-        preco_unit = PRECOS[categoria]["normal"]
+    # ===== SALVA NO BANCO =====
+    for produto, qtd in itens:
+        categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-    total_item = preco_unit * qtd
+        if eh_morador:
+            preco_unit = PRECOS[categoria]["morador"]
+        else:
+            preco_unit = PRECOS[categoria]["normal"]
 
-    c.execute("""
-        INSERT INTO vendas 
-        (data, cliente_email, cliente_nome, item, categoria, qtd, total, cupom, status_pagamento, comprovante_path)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    """,
-    (
-        datetime.now().strftime("%d/%m %H:%M"),
-        u["email"],
-        u["nome"],
-        produto,
-        categoria,
-        qtd,
-        total_item,   # 👈 CORREÇÃO AQUI
-        cupom,
-        status_pagamento,
-        caminho_comprovante
-    ))
+        total_item = preco_unit * qtd
 
-conn.commit()
+        c.execute("""
+            INSERT INTO vendas 
+            (data, cliente_email, cliente_nome, item, categoria, qtd, total, cupom, status_pagamento, comprovante_path)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+        """,
+        (
+            datetime.now().strftime("%d/%m %H:%M"),
+            u["email"],
+            u["nome"],
+            produto,
+            categoria,
+            qtd,
+            total_item,
+            cupom,
+            status_pagamento,
+            caminho_comprovante
+        ))
 
+    conn.commit()
 
-        # ===== MENSAGEM WHATSAPP =====
-        nome = u["nome"]
+    # ===== MENSAGEM WHATSAPP =====
+    nome = u["nome"]
 
-        msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
+    msg = f"Oi Jaque! Sou *{nome}* e fiz meu pedido pelo app:\n\n"
 
-        for produto, qtd in itens:
-            msg += f"▪️ {qtd}x {produto}\n"
+    for produto, qtd in itens:
+        msg += f"▪️ {qtd}x {produto}\n"
 
+    msg += (
+        f"\nEntrega: {detalhe_entrega}"
+        f"\nPagamento: {forma_pgto}"
+        f"\nStatus: {status_pagamento}"
+        f"\n\n*Total: R$ {total:.2f}*"
+    )
+
+    if forma_pgto == "PIX":
         msg += (
-            f"\n Entrega: {detalhe_entrega}"
-            f"\n Pagamento: {forma_pgto}"
-            f"\n Status: {status_pagamento}"
-            f"\n\n*Total: R$ {total:.2f}*"
+            "\n\nEnviei o comprovante pelo app."
+            "\nSe não aparecer para você, posso reenviar por aqui."
         )
 
-        if forma_pgto == "PIX":
-            msg += (
-                "\n\n Enviei o comprovante pelo app."
-                "\nSe não aparecer para você, posso reenviar por aqui."
-            )
+    link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
 
-        link = f"https://wa.me/{destinatario}?text={urllib.parse.quote(msg)}"
+    st.success("Pedido registrado com segurança!")
+    st.link_button("Enviar pedido no WhatsApp", link)
 
-        st.success("Pedido registrado com segurança!")
-        st.link_button("Enviar pedido no WhatsApp", link)
