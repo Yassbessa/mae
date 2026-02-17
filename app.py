@@ -20,7 +20,7 @@ NUMERO_JAQUE = os.getenv("NUMERO_JAQUE")
 
 CUPOM_MORADOR = os.getenv("CUPOM_MORADOR")
 CUPOM_GARAGEM = os.getenv("CUPOM_GARAGEM")
-CUPOM_FILHADADONA = os.getenv("CUPOM_FILHADADONA")
+CUPOM_FILHA= os.getenv("CUPOM_FILHA")
 
 # =========== LER PIX =====================
 
