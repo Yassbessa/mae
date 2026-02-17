@@ -104,15 +104,32 @@ CREATE TABLE IF NOT EXISTS vendas (
     qtd INTEGER,
     total REAL,
     cupom TEXT,
-    status_pagamento TEXT
+    status_pagamento TEXT,
+    comprovante_path TEXT
 )
 ''')
 
 conn.commit()
 
-# garante coluna status_pagamento
+# garante compatibilidade com bancos antigos
 try:
-    c.execute("ALTER TABLE vendas ADD COLUMN status_pagamento TEXT")
+    c.execute("ALTER TABLE vendas ADD COLUMN comprovante_path TEXT")
+except:
+    pass
+
+conn.commit()
+
+# ===== AJUSTES DE ESTRUTURA (SEGURANÇA) =====
+
+# adiciona nome do cliente na tabela vendas
+try:
+    c.execute("ALTER TABLE vendas ADD COLUMN cliente_nome TEXT")
+except:
+    pass
+
+# adiciona caminho do comprovante
+try:
+    c.execute("ALTER TABLE vendas ADD COLUMN comprovante_path TEXT")
 except:
     pass
 
@@ -206,7 +223,7 @@ elif st.session_state.etapa == "login":
 elif st.session_state.etapa == "painel_admin":
     st.title("👑 Painel Admin - Ja Que É Doce")
 
-    # ___________ ALERTA DE ESTOQUE _________________
+    # ---------- ALERTA DE ESTOQUE ----------
     st.subheader("📦 Status do Estoque")
 
     produtos_esgotados = {p: q for p, q in ESTOQUE.items() if q == 0}
@@ -227,7 +244,7 @@ elif st.session_state.etapa == "painel_admin":
         st.session_state.etapa = "boas_vindas"
         st.rerun()
 
-    # ===== CARREGA DADOS =====
+    # ---------- CARREGAR DADOS ----------
     df_vendas = pd.read_sql_query("SELECT * FROM vendas", conn)
     df_users = pd.read_sql_query(
         "SELECT nome, email, endereco, tipo_cliente, nascimento FROM usuarios", conn
@@ -237,124 +254,136 @@ elif st.session_state.etapa == "painel_admin":
         st.info("Ainda não temos vendas registradas.")
         st.stop()
 
-    # Junta vendas com usuários
-    df = df_vendas.merge(df_users, left_on="cliente_email", right_on="email", how="left")
+    # ===== MONTA DATAFRAME PRINCIPAL =====
+    df = df_vendas.copy()
+    
+    # se já existir cliente_nome (novo sistema)
+    if "cliente_nome" in df.columns:
+        df["nome"] = df["cliente_nome"]
+    
+    # fallback para vendas antigas
+    if "nome" not in df.columns or df["nome"].isna().any():
+        df = df.merge(df_users, left_on="cliente_email", right_on="email", how="left")
+    
+    # substitui nomes faltantes
+    df["nome"] = df["nome"].fillna("Cliente não identificado")
 
-    # Cria coluna mês
-    df["mes"] = df["data"].str[3:5]
+    # ---------- CORREÇÃO DE DATA ----------
+    df["data_dt"] = pd.to_datetime(df["data"], format="%d/%m %H:%M", errors="coerce")
+    df["mes"] = df["data_dt"].dt.month
+    df["mes_nome"] = df["data_dt"].dt.strftime("%b")
 
-    # ===== SEPARAÇÃO DE PÚBLICO =====
+    # ---------- SEPARAÇÃO DE PÚBLICO ----------
     df_moradores = df[df["tipo_cliente"] == "Morador"]
     df_externos = df[df["tipo_cliente"] == "Externo"]
 
     tab_moradores, tab_externos, tab_geral = st.tabs(
         ["🏢 Machado Ribeiro", "🐝 Clientes JQD", "📊 Visão Geral"]
     )
-    
-    # _____________________🏢 MORADORES_______________________
+
+    # ================= MORADORES =================
     with tab_moradores:
-        st.subheader("🏢 Moradores do Machado Ribeiro")
+        st.subheader("🏢 Moradores")
 
-        faturamento = df_moradores["total"].sum()
-        st.metric("💰 Faturamento Total", f"R$ {faturamento:.2f}")
+        st.metric("💰 Faturamento Total", f"R$ {df_moradores['total'].sum():.2f}")
 
-        # Ranking
         st.subheader("🏆 Sabores Campeões")
         ranking = df_moradores.groupby("item")["qtd"].sum().sort_values(ascending=False)
         st.bar_chart(ranking)
 
-        # Gasto por apto / cliente
         st.subheader("💰 Gasto por cliente")
         gasto_cliente = df_moradores.groupby("nome")["total"].sum().sort_values(ascending=False)
         st.dataframe(gasto_cliente)
 
-        # Comportamento mensal
-        st.subheader("📅 Comportamento mensal")
-        mensal = df_moradores.groupby(["nome", "mes"])["total"].sum().reset_index()
-        st.dataframe(mensal)
+        st.subheader("📅 Gasto mensal")
+        mensal = df_moradores.groupby(["nome", "mes_nome"])["total"].sum().reset_index()
+        st.dataframe(mensal.sort_values(["nome", "mes_nome"]))
 
-        # 🎂 Aniversariantes
+       # 🎂 Aniversariantes do mês
         st.subheader("🎂 Aniversariantes do mês")
+        
         mes_atual = datetime.now().strftime("%m")
-
+        
         aniversariantes = df_users[
             (df_users["tipo_cliente"] == "Morador") &
             (df_users["nascimento"].str[3:5] == mes_atual)
         ]
-
+        
         if not aniversariantes.empty:
             for _, row in aniversariantes.iterrows():
                 nome = row["nome"]
                 data = row["nascimento"]
-
+        
                 total_cliente = df_moradores[df_moradores["nome"] == nome]["total"].sum()
-
+        
                 st.success(f"🎉 {nome} faz aniversário em {data}")
                 st.write(f"💰 Total gasto: R$ {total_cliente:.2f}")
-
+        
                 msg = (
                     f"Olá {nome}! 🎉\n"
                     "Seu aniversário está chegando e queremos comemorar com você! 🎂\n"
                     "Use o cupom *NIVERDOCE* e ganhe um sacolé à sua escolha grátis 🍦\n"
                     "Esperamos você! 💛"
                 )
+        
                 st.code(msg)
+        
         else:
             st.info("Nenhum aniversariante este mês.")
 
-    # _____________🐝 CLIENTES EXTERNOS_________________________
-    
+
+    # ================= EXTERNOS =================
     with tab_externos:
         st.subheader("🐝 Clientes JQD")
 
-        faturamento = df_externos["total"].sum()
-        st.metric("💰 Faturamento Total", f"R$ {faturamento:.2f}")
+        st.metric("💰 Faturamento Total", f"R$ {df_externos['total'].sum():.2f}")
 
-        # Ranking
         st.subheader("🏆 Sabores Campeões")
         ranking = df_externos.groupby("item")["qtd"].sum().sort_values(ascending=False)
         st.bar_chart(ranking)
 
-        # Gasto por cliente
         st.subheader("💰 Gasto por cliente")
         gasto_cliente = df_externos.groupby("nome")["total"].sum().sort_values(ascending=False)
         st.dataframe(gasto_cliente)
 
-        # Comportamento mensal
-        st.subheader("📅 Comportamento mensal")
-        mensal = df_externos.groupby(["nome", "mes"])["total"].sum().reset_index()
-        st.dataframe(mensal)
+        st.subheader("📅 Gasto mensal")
+        mensal = df_externos.groupby(["nome", "mes_nome"])["total"].sum().reset_index()
+        st.dataframe(mensal.sort_values(["nome", "mes_nome"]))
 
-        # 🎂 Aniversariantes
+    # 🎂 Aniversariantes do mês
         st.subheader("🎂 Aniversariantes do mês")
-
+        
+        mes_atual = datetime.now().strftime("%m")
+        
         aniversariantes = df_users[
             (df_users["tipo_cliente"] == "Externo") &
             (df_users["nascimento"].str[3:5] == mes_atual)
         ]
-
+        
         if not aniversariantes.empty:
             for _, row in aniversariantes.iterrows():
                 nome = row["nome"]
                 data = row["nascimento"]
-
+        
                 total_cliente = df_externos[df_externos["nome"] == nome]["total"].sum()
-
+        
                 st.success(f"🎉 {nome} faz aniversário em {data}")
                 st.write(f"💰 Total gasto: R$ {total_cliente:.2f}")
-                
+        
                 msg = (
                     f"Olá {nome}! 🎉\n"
                     "Seu aniversário está chegando e queremos comemorar com você! 🎂\n"
                     "Use o cupom *NIVERDOCE* e ganhe um sacolé à sua escolha grátis 🍦\n"
                     "Esperamos você! 💛"
                 )
+        
                 st.code(msg)
+        
         else:
             st.info("Nenhum aniversariante este mês.")
 
 
-    # 📊 VISÃO GERAL
+    # ================= VISÃO GERAL =================
     with tab_geral:
         st.subheader("📊 Visão Geral")
 
@@ -362,31 +391,50 @@ elif st.session_state.etapa == "painel_admin":
         col1.metric("Moradores", f"R$ {df_moradores['total'].sum():.2f}")
         col2.metric("Externos", f"R$ {df_externos['total'].sum():.2f}")
 
-        # Exportação mensal
+        # ---------- EXPORTAÇÃO MENSAL ----------
         st.subheader("📥 Exportar relatório mensal")
-        meses = sorted(df["mes"].unique())
+        meses = sorted(df["mes_nome"].dropna().unique())
         mes_escolhido = st.selectbox("Escolha o mês", meses)
 
-        df_mes = df[df["mes"] == mes_escolhido]
+        df_mes = df[df["mes_nome"] == mes_escolhido]
 
         st.download_button(
             "📄 Baixar planilha do mês",
             df_mes.to_csv(index=False),
-            file_name=f"relatorio_mes_{mes_escolhido}.csv",
+            file_name=f"relatorio_{mes_escolhido}.csv",
             mime="text/csv"
         )
 
-        # Tabelas completas
+        # ---------- HISTÓRICO ----------
         st.subheader("📊 Histórico completo")
         st.dataframe(df)
 
-        # 🧹 Excluir vendas de teste
+        # ---------- COMPROVANTES ----------
+        st.subheader("📎 Comprovantes enviados")
+
+        for _, row in df.iterrows():
+            caminho = row.get("comprovante_path")
+
+            if caminho and os.path.exists(caminho):
+                with st.expander(f"📄 {row['cliente_email']} • {row['data']}"):
+                    st.write(f"Item: {row['item']}")
+                    st.write(f"Total: R$ {row['total']:.2f}")
+
+                    with open(caminho, "rb") as file:
+                        st.download_button(
+                            "Baixar comprovante",
+                            data=file,
+                            file_name=os.path.basename(caminho)
+                        )
+
+        # ---------- LIMPEZA ----------
         st.subheader("🧹 Limpar vendas de teste")
         if st.button("Excluir vendas com cliente vazio"):
             c.execute("DELETE FROM vendas WHERE cliente_email IS NULL")
             conn.commit()
             st.success("Vendas de teste removidas!")
             st.rerun()
+
 
 # ================= CARDÁPIO =================
 elif st.session_state.etapa == "cardapio":
@@ -563,26 +611,38 @@ elif st.session_state.etapa == "cardapio":
         elif forma_pgto == "Dinheiro":
             status_pagamento = "Pagamento na entrega"
 
-        # ===== SALVA NO BANCO =====
-        for produto, qtd in itens:
-            categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
+       # ===== SALVA NO BANCO =====
+for produto, qtd in itens:
+    categoria = next(cat for cat, lista in PRODUTOS.items() if produto in lista)
 
-            c.execute("""
-                INSERT INTO vendas (data, cliente_email, item, categoria, qtd, total, cupom, status_pagamento)
-                VALUES (?,?,?,?,?,?,?,?)
-            """,
-            (
-                datetime.now().strftime("%d/%m %H:%M"),
-                u["email"],
-                produto,
-                categoria,
-                qtd,
-                total,
-                cupom,
-                status_pagamento
-            ))
+    # calcula preço correto do item
+    if eh_morador:
+        preco_unit = PRECOS[categoria]["morador"]
+    else:
+        preco_unit = PRECOS[categoria]["normal"]
 
-        conn.commit()
+    total_item = preco_unit * qtd
+
+    c.execute("""
+        INSERT INTO vendas 
+        (data, cliente_email, cliente_nome, item, categoria, qtd, total, cupom, status_pagamento, comprovante_path)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """,
+    (
+        datetime.now().strftime("%d/%m %H:%M"),
+        u["email"],
+        u["nome"],
+        produto,
+        categoria,
+        qtd,
+        total_item,   # 👈 CORREÇÃO AQUI
+        cupom,
+        status_pagamento,
+        caminho_comprovante
+    ))
+
+conn.commit()
+
 
         # ===== MENSAGEM WHATSAPP =====
         nome = u["nome"]
