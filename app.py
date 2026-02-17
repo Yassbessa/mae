@@ -488,16 +488,20 @@ elif st.session_state.etapa == "cardapio":
 
     st.title(f"Olá, {u['nome']} 🍦")
 
-    # -------- CUPONS --------
+       # -------- CUPONS --------
     cupom = st.text_input("Possui cupom?").upper()
 
-    eh_morador = CUPOM_MORADOR and CUPOM_MORADOR in cupom
+    eh_filhado = CUPOM_FILHA and CUPOM_FILHA in cupom
+
+    # regras
+    eh_morador = (CUPOM_MORADOR and CUPOM_MORADOR in cupom) or eh_filhado
     eh_garagem = CUPOM_GARAGEM and CUPOM_GARAGEM in cupom
     eh_niver = "NIVERDOCE" in cupom and datetime.now().strftime("%d/%m") == u["nasc"]
 
     total = 0
     itens = []
     precos_para_brinde = []
+
 
     # -------- PREÇOS --------
     PRECOS = {
