@@ -250,9 +250,8 @@ elif st.session_state.etapa == "painel_admin":
         "SELECT nome, email, endereco, tipo_cliente, nascimento FROM usuarios", conn
     )
 
-    if df_vendas.empty:
-        st.info("Ainda não temos vendas registradas.")
-        st.stop()
+    tem_vendas = not df_vendas.empty
+
 
       #     ===== MONTA DATAFRAME =====
     
