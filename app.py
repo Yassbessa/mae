@@ -58,13 +58,13 @@ PRODUTOS = {
 
 # ================= ESTOQUE =================
 ESTOQUE = {
-    "Goiaba": 5, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
-    "Abacaxi c/ Hortelã": 1, "Frutopia": 3,
-    "Ninho c/ Nutella": 5, "Ninho c/ Morango": 4, "Chicabon": 4,
-    "Mousse de Maracujá": 3, "Pudim de Leite": 5,
-    "Açaí Cremoso": 4, "Coco Cremoso": 6,
+    "Goiaba": 4, "Uva": 0, "Maracujá": 0, "Manga": 4, "Morango": 0,
+    "Abacaxi c/ Hortelã": 2, "Frutopia": 3,
+    "Ninho c/ Nutella": 0, "Ninho c/ Morango": 2, "Chicabon": 0,
+    "Mousse de Maracujá": 2, "Pudim de Leite": 3,
+    "Açaí Cremoso": 2, "Coco Cremoso": 2,
     "Piña Colada": 1, "Sex on the Beach": 0, "Caipirinha": 2,
-    "Batida de Maracujá": 2, "Batida de Morango": 1,
+    "Batida de Maracujá": 2, "Batida de Morango": 0,
     "Empadão Frango P (220mL)": 4,
     "Empadão Frango G (500mL)": 0,
     "Crunch Cake (180g)": 2
